@@ -9,6 +9,9 @@ dependencies = [
     "httpx>=0.25.0",
 ]
 
+[project.scripts]
+giraf-mcp = "girafmcp.server:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
