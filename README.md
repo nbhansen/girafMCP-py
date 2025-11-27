@@ -1,89 +1,79 @@
-# GIRAF MCP Server
+<p align="center">
+  <img src="https://giraf.cs.aau.dk/wp-content/uploads/2020/05/cropped-girafIconAlpha.png" alt="GIRAF Logo" width="120" height="120">
+</p>
 
-MCP (Model Context Protocol) server for the GIRAF project at Aalborg University. Helps students with technical questions, domain knowledge, and project context.
+<h1 align="center">GIRAF MCP Server</h1>
 
-## Features
+<p align="center">
+  <strong>AI-powered knowledge assistant for the GIRAF project</strong><br>
+  <em>Helping students build accessible apps for children with autism</em>
+</p>
 
-- **Code Search**: Search across GIRAF repositories with GitHub permalinks
-- **Wiki Search**: Live search through the GIRAF wiki documentation
-- **Static Documents**: Semantic search over PDFs and research papers
-- **Domain Knowledge**: Background on autism, visual schedules, accessibility
-- **Project Context**: Current semester focus, known issues, recent decisions
-- **Personas**: Adapts responses for CS students, pedagogy students, supervisors
+<p align="center">
+  <a href="https://giraf.cs.aau.dk">Website</a> •
+  <a href="https://aau-giraf.github.io/wiki/">Wiki</a> •
+  <a href="https://github.com/aau-giraf">GitHub</a>
+</p>
 
-## Installation
+---
+
+## About GIRAF
+
+[GIRAF](https://giraf.cs.aau.dk) is an app environment for autistic children with minimal or no verbal communication. Developed since 2011 at Aalborg University in collaboration with Egebakken school and Børnehaven Birken kindergarten, GIRAF helps children plan their daily activities through visual schedules.
+
+**This MCP server** connects AI assistants (like Claude) to GIRAF's codebase, documentation, and domain knowledge—making it easier for new students to onboard and contribute.
+
+## What It Does
+
+| Feature | Description |
+|---------|-------------|
+| **Code Search** | Search across active GIRAF repositories with GitHub permalinks |
+| **Wiki Search** | Live search through GIRAF wiki documentation |
+| **Static Documents** | Semantic search over PDFs, handover reports, and research papers |
+| **Domain Knowledge** | Background on autism, visual schedules, and accessibility |
+| **Project Context** | Current semester focus, known issues, recent decisions |
+| **Personas** | Adapts responses for CS students, pedagogy students, supervisors |
+
+> **Smart filtering**: Automatically excludes archived repositories and legacy wiki content to surface only current, relevant information.
+
+## Quick Start
+
+### Installation
 
 ```bash
-# Clone and enter directory
+# Clone and setup
 cd girafMCP-py
-
-# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate
-
-# Install in development mode
 pip install -e ".[dev]"
 ```
 
-## Configuration
+### Configuration
 
-Create a `.env` file in the project root (or set environment variables):
+Create a `.env` file:
 
 ```bash
-# Required for GitHub API (higher rate limits)
+# Required: GitHub token for API access
 GITHUB_TOKEN=ghp_...
 
-# Optional: ChromaDB persistence directory (default: ./chroma_data)
-CHROMA_PERSIST_DIR=/path/to/chroma_data
-
-# Optional: Custom data directory for context.yaml, personas.yaml, domain/
-GIRAF_DATA_DIR=/path/to/data
-
-# Optional: Directory containing PDFs for static document search
+# Optional: Directory containing PDFs for semantic search
 GIRAF_DOCUMENTS_DIR=/path/to/documents
 ```
 
-### Static Document Directory
-
-The `GIRAF_DOCUMENTS_DIR` should be an **absolute path** to a folder containing PDF files you want to search. The server will automatically ingest all PDFs on startup.
-
-**Example structure:**
-
-```
-/home/user/giraf-documents/
-├── research/
-│   ├── _meta.yaml           # Optional: adds tags to all PDFs in this folder
-│   ├── autism-study.pdf
-│   └── visual-schedules.pdf
-├── handover/
-│   ├── _meta.yaml
-│   └── spring-2024-report.pdf
-└── guides/
-    └── student-handbook.pdf
-```
-
-**Folder tagging with `_meta.yaml`:**
-
-Create a `_meta.yaml` file in any folder to add tags to all PDFs in that folder:
-
-```yaml
-tags: ["research", "academic"]
-description: "Research papers and academic sources"
-```
-
-Tags can be used to filter search results with the `search_static_documents` tool.
-
-## Usage
-
-### Run the MCP Server
+### Run the Server
 
 ```bash
+# Standard mode (stdio for Claude Desktop/Code)
 giraf-mcp
+
+# HTTP mode for remote/shared access
+pip install -e ".[http]"
+giraf-mcp --http --port 8000
 ```
 
 ### Claude Desktop Configuration
 
-Add to your Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`):
+Add to `~/.config/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -93,224 +83,100 @@ Add to your Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`
       "cwd": "/path/to/girafMCP-py",
       "env": {
         "GITHUB_TOKEN": "ghp_...",
-        "GIRAF_DOCUMENTS_DIR": "/path/to/your/documents"
+        "GIRAF_DOCUMENTS_DIR": "/path/to/documents"
       }
     }
   }
 }
 ```
 
-**Note:** The `cwd` field ensures the server runs from the project directory, which is needed for loading `data/` files if `GIRAF_DATA_DIR` is not set.
+## Available Tools
 
-### HTTP Server Mode (Remote Access)
-
-For shared server deployments, run with HTTP transport:
-
-```bash
-# Install HTTP dependencies
-pip install -e ".[http]"
-
-# Run HTTP server (default port 8000)
-giraf-mcp --http
-
-# Custom host/port
-giraf-mcp --http --host 0.0.0.0 --port 9000
-```
-
-**Endpoints:**
-- `GET /health` - Health check
-- `GET /sse` - SSE connection for MCP protocol
-- `POST /messages/` - Message endpoint for MCP protocol
-
-**Environment variables for HTTP mode:**
-```bash
-GIRAF_MCP_HOST=0.0.0.0    # Default host
-GIRAF_MCP_PORT=8000       # Default port
-```
-
-**Connecting to remote server:**
-
-MCP clients that support SSE transport can connect to `http://your-server:8000/sse`.
-
-## Available Tools (14)
-
+### Repository & Code
 | Tool | Description |
 |------|-------------|
-| `list_repositories` | List all GIRAF GitHub repositories |
+| `list_repositories` | List active GIRAF repositories (excludes archived) |
 | `get_file` | Get file content with permalink for citation |
 | `search_code` | Search code across repositories |
-| `search_documentation` | Semantic search in indexed wiki/docs |
 | `get_permalink` | Generate GitHub permalink with line numbers |
-| `get_project_context` | Get current semester focus and priorities |
-| `list_personas` | List available user personas |
-| `get_persona` | Get persona details for tailored responses |
-| `search_domain_knowledge` | Search autism/accessibility domain knowledge |
-| `list_domain_topics` | List available domain topics |
-| `search_wiki` | Live search the GIRAF wiki (fetches from GitHub) |
-| `list_wiki_pages` | List all wiki pages by section |
-| `search_static_documents` | Semantic search over ingested PDFs |
+
+### Documentation
+| Tool | Description |
+|------|-------------|
+| `search_wiki` | Live search GIRAF wiki (excludes legacy content) |
+| `list_wiki_pages` | List all current wiki pages by section |
+| `search_documentation` | Semantic search in indexed docs |
+| `search_static_documents` | Search ingested PDFs with page citations |
 | `list_static_documents` | List all ingested PDFs with tags |
 
-## Example Queries and Responses
+### Context & Knowledge
+| Tool | Description |
+|------|-------------|
+| `get_project_context` | Current semester focus and priorities |
+| `search_domain_knowledge` | Search autism/accessibility knowledge |
+| `list_domain_topics` | List available domain topics |
+| `list_personas` | List available user personas |
+| `get_persona` | Get persona details for tailored responses |
 
-When you ask Claude a question, it uses the appropriate tools and returns structured results. Here are examples:
+## Static Document Search
 
-### Code Search
+Point `GIRAF_DOCUMENTS_DIR` to a folder with PDFs. The server auto-ingests them on startup.
 
-**Query:** "Where is authentication handled?"
-
-**Tool used:** `search_code`
-
-**Response:**
 ```
-# Code Search Results for: authentication
-
-## foodplanner-api/src/Auth/AuthController.cs
-- URL: https://github.com/aau-giraf/foodplanner-api/blob/abc123/src/Auth/AuthController.cs
-
-## weekplanner-api/src/Controllers/AccountController.cs
-- URL: https://github.com/aau-giraf/weekplanner-api/blob/def456/src/Controllers/AccountController.cs
-```
-
-### Wiki Search
-
-**Query:** "How do I set up the development environment?"
-
-**Tool used:** `search_wiki`
-
-**Response:**
-```
-# Wiki Search Results: development setup
-
-## Getting Started
-**URL:** https://aau-giraf.github.io/wiki/development/getting-started/
-**Relevance:** 85%
-
-**Matching content:**
-> To set up your development environment, first install Flutter...
-> Make sure you have Docker installed for running the API locally...
+/home/user/giraf-documents/
+├── handover/
+│   ├── _meta.yaml           # Tags all PDFs in folder
+│   ├── FoodPlanner-SW4.pdf
+│   └── VTA-IxD1.pdf
+└── research/
+    └── autism-study.pdf
 ```
 
-### Domain Knowledge
-
-**Query:** "Why do visual schedules help children with autism?"
-
-**Tool used:** `search_domain_knowledge`
-
-**Response:**
-```
-# Domain Knowledge: visual schedules autism
-
-## Understanding Autism - Visual Processing
-**Source:** autism-basics.md
-**Relevance:** 100%
-
-Many individuals with autism are visual learners and process
-visual information more easily than verbal instructions...
-```
-
-### Project Context
-
-**Query:** "What are the current priorities?"
-
-**Tool used:** `get_project_context`
-
-**Response:**
-```
-# GIRAF Project Context
-
-**Semester:** Spring 2025
-**Focus:** Food planner accessibility improvements
-
-## Current Priorities
-- Issue #123: Screen reader support
-- Issue #145: High contrast mode
-
-## Known Issues & Workarounds
-**Issue:** Dev setup docs outdated
-**Workaround:** Use Docker setup instead, see foodplanner README
-```
-
-### Static Document Search
-
-**Query:** "Search research papers for communication strategies"
-
-**Tool used:** `search_static_documents`
-
-**Response:**
-```
-# Static Document Search: communication strategies
-
-## autism-communication-study.pdf (Page 12)
-**Source:** /path/to/documents/research/autism-communication-study.pdf
-**Tags:** research, academic
-**Relevance:** 78%
-
-Children with autism often benefit from augmentative and
-alternative communication (AAC) strategies including...
+**Folder tagging** with `_meta.yaml`:
+```yaml
+tags: ["handover", "semester", "documentation"]
 ```
 
 ## Development
 
 ```bash
-# Run tests
+# Run tests (57 passing)
 pytest
 
-# Run tests with coverage
+# With coverage
 pytest --cov=girafmcp
 
-# Type checking
+# Type checking & linting
 mypy src/
-
-# Linting
 ruff check src/
 ```
-
-**Test Status:** 57 tests passing
 
 ## Project Structure
 
 ```
 girafMCP-py/
 ├── src/girafmcp/
-│   ├── core/
-│   │   ├── ports.py           # Abstract interfaces
-│   │   ├── types.py           # Domain types
-│   │   └── services/          # Business logic
-│   │       └── ingestion_service.py
-│   ├── adapters/
-│   │   ├── github_adapter.py  # GitHub API
-│   │   ├── chroma_adapter.py  # Vector store
-│   │   ├── file_adapter.py    # YAML/markdown files
-│   │   └── pdf_adapter.py     # PDF extraction
-│   └── server.py              # MCP server (14 tools)
+│   ├── core/              # Ports, types, services
+│   ├── adapters/          # GitHub, ChromaDB, PDF adapters
+│   └── server.py          # MCP server (14 tools)
 ├── data/
-│   ├── context.yaml           # Project context
-│   ├── personas.yaml          # User personas
-│   └── domain/                # Domain knowledge markdown
-├── tests/
-│   ├── test_github_adapter.py
-│   ├── test_chroma_adapter.py
-│   ├── test_pdf_adapter.py
-│   └── test_ingestion_service.py
-└── .env.example               # Environment variable template
+│   ├── context.yaml       # Project context
+│   ├── personas.yaml      # User personas
+│   └── domain/            # Domain knowledge
+└── tests/
 ```
 
-## How It Works
+## Related Projects
 
-### Static Document Ingestion
+- [foodplanner](https://github.com/aau-giraf/foodplanner) - Food planning app (Flutter)
+- [foodplanner-api](https://github.com/aau-giraf/foodplanner-api) - Food planner backend (.NET)
+- [visual-tangible-artefacts](https://github.com/aau-giraf/visual-tangible-artefacts) - VTA app
+- [weekplan](https://github.com/aau-giraf/weekplan) - Week planner (TypeScript)
+- [wiki](https://github.com/aau-giraf/wiki) - Project documentation
 
-1. On server startup, if `GIRAF_DOCUMENTS_DIR` is set, the server scans for PDF files
-2. Each PDF is extracted page-by-page using pdfplumber
-3. Long pages are split into ~1500 character chunks with overlap
-4. Documents are stored in ChromaDB with metadata (source, page number, tags)
-5. File hashes track changes - unchanged files are skipped on restart
-6. Search uses semantic similarity to find relevant content
+---
 
-### Live Wiki Search
-
-The wiki search fetches pages directly from the `aau-giraf/wiki` GitHub repository, ensuring results are always up-to-date without needing to re-index.
-
-## License
-
-Part of the GIRAF project at Aalborg University.
+<p align="center">
+  Part of the <a href="https://giraf.cs.aau.dk">GIRAF project</a> at Aalborg University<br>
+  <sub>Helping children with autism through accessible technology since 2011</sub>
+</p>
