@@ -121,26 +121,104 @@ Add to your Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`
 | `search_static_documents` | Semantic search over ingested PDFs |
 | `list_static_documents` | List all ingested PDFs with tags |
 
-## Example Queries
+## Example Queries and Responses
 
-**For CS Students:**
-- "Where is user authentication handled in foodplanner-api?"
-- "Show me the Flutter widget for displaying schedules"
-- "How do I set up the development environment?"
+When you ask Claude a question, it uses the appropriate tools and returns structured results. Here are examples:
 
-**For Pedagogy Students:**
-- "Why do children with autism benefit from visual schedules?"
-- "What sensory considerations should I know about?"
-- "How does the app help with transitions?"
+### Code Search
 
-**For Supervisors:**
-- "What were the main decisions from last semester?"
-- "What are the current project priorities?"
-- "Show me the handover documentation"
+**Query:** "Where is authentication handled?"
 
-**Static Document Search:**
-- "Search the research papers for communication strategies"
-- "What does the handover report say about deployment?"
+**Tool used:** `search_code`
+
+**Response:**
+```
+# Code Search Results for: authentication
+
+## foodplanner-api/src/Auth/AuthController.cs
+- URL: https://github.com/aau-giraf/foodplanner-api/blob/abc123/src/Auth/AuthController.cs
+
+## weekplanner-api/src/Controllers/AccountController.cs
+- URL: https://github.com/aau-giraf/weekplanner-api/blob/def456/src/Controllers/AccountController.cs
+```
+
+### Wiki Search
+
+**Query:** "How do I set up the development environment?"
+
+**Tool used:** `search_wiki`
+
+**Response:**
+```
+# Wiki Search Results: development setup
+
+## Getting Started
+**URL:** https://aau-giraf.github.io/wiki/development/getting-started/
+**Relevance:** 85%
+
+**Matching content:**
+> To set up your development environment, first install Flutter...
+> Make sure you have Docker installed for running the API locally...
+```
+
+### Domain Knowledge
+
+**Query:** "Why do visual schedules help children with autism?"
+
+**Tool used:** `search_domain_knowledge`
+
+**Response:**
+```
+# Domain Knowledge: visual schedules autism
+
+## Understanding Autism - Visual Processing
+**Source:** autism-basics.md
+**Relevance:** 100%
+
+Many individuals with autism are visual learners and process
+visual information more easily than verbal instructions...
+```
+
+### Project Context
+
+**Query:** "What are the current priorities?"
+
+**Tool used:** `get_project_context`
+
+**Response:**
+```
+# GIRAF Project Context
+
+**Semester:** Spring 2025
+**Focus:** Food planner accessibility improvements
+
+## Current Priorities
+- Issue #123: Screen reader support
+- Issue #145: High contrast mode
+
+## Known Issues & Workarounds
+**Issue:** Dev setup docs outdated
+**Workaround:** Use Docker setup instead, see foodplanner README
+```
+
+### Static Document Search
+
+**Query:** "Search research papers for communication strategies"
+
+**Tool used:** `search_static_documents`
+
+**Response:**
+```
+# Static Document Search: communication strategies
+
+## autism-communication-study.pdf (Page 12)
+**Source:** /path/to/documents/research/autism-communication-study.pdf
+**Tags:** research, academic
+**Relevance:** 78%
+
+Children with autism often benefit from augmentative and
+alternative communication (AAC) strategies including...
+```
 
 ## Development
 
