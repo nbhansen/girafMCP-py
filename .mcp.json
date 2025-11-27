@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "girafmcp": {
+      "type": "stdio",
+      "command": "/home/nbhansen/dev/GIRAF/girafMCP-py/.venv/bin/python",
+      "args": ["-m", "girafmcp.server"],
+      "cwd": "/home/nbhansen/dev/GIRAF/girafMCP-py"
+    }
+  }
+}

@@ -44,8 +44,12 @@ class GitHubAdapter(RepositoryPort):
         if self.token:
             self._headers["Authorization"] = f"Bearer {self.token}"
 
-    async def list_repos(self) -> list[Repository]:
-        """List all repositories in the organization."""
+    async def list_repos(self, include_archived: bool = False) -> list[Repository]:
+        """List all repositories in the organization.
+
+        Args:
+            include_archived: If True, include archived repositories. Default False.
+        """
         repos: list[Repository] = []
 
         async with httpx.AsyncClient() as client:
@@ -64,6 +68,10 @@ class GitHubAdapter(RepositoryPort):
                     break
 
                 for repo in data:
+                    # Skip archived repos unless explicitly requested
+                    if repo.get("archived", False) and not include_archived:
+                        continue
+
                     repos.append(
                         Repository(
                             name=repo["name"],
@@ -126,7 +134,7 @@ class GitHubAdapter(RepositoryPort):
             )
 
     async def search_code(
-        self, query: str, repo: str | None = None
+        self, query: str, repo: str | None = None, include_archived: bool = False
     ) -> list[CodeSearchResult]:
         """Search for code across repositories.
 
@@ -135,6 +143,7 @@ class GitHubAdapter(RepositoryPort):
         Args:
             query: Search query
             repo: Optional repository to limit search to
+            include_archived: If True, include archived repositories. Default False.
         """
         results: list[CodeSearchResult] = []
 
@@ -142,6 +151,10 @@ class GitHubAdapter(RepositoryPort):
         search_query = f"{query} org:{self.org}"
         if repo:
             search_query = f"{query} repo:{self.org}/{repo}"
+
+        # Exclude archived repos unless explicitly requested
+        if not include_archived:
+            search_query += " archived:false"
 
         async with httpx.AsyncClient() as client:
             try:
@@ -213,11 +226,14 @@ class GitHubAdapter(RepositoryPort):
 
     # === Wiki Methods ===
 
-    async def list_wiki_pages(self, repo: str = "wiki") -> list[WikiPage]:
+    async def list_wiki_pages(
+        self, repo: str = "wiki", include_legacy: bool = False
+    ) -> list[WikiPage]:
         """List all markdown pages in the wiki.
 
         Args:
             repo: Repository containing the wiki (default: 'wiki')
+            include_legacy: If True, include legacy pages. Default False.
 
         Returns:
             List of WikiPage objects
@@ -225,7 +241,9 @@ class GitHubAdapter(RepositoryPort):
         pages: list[WikiPage] = []
 
         async with httpx.AsyncClient() as client:
-            await self._fetch_wiki_pages_recursive(client, repo, "docs", pages)
+            await self._fetch_wiki_pages_recursive(
+                client, repo, "docs", pages, include_legacy=include_legacy
+            )
 
         return pages
 
@@ -235,6 +253,7 @@ class GitHubAdapter(RepositoryPort):
         repo: str,
         path: str,
         pages: list[WikiPage],
+        include_legacy: bool = False,
     ) -> None:
         """Recursively fetch wiki pages from a directory."""
         response = await client.get(
@@ -248,9 +267,12 @@ class GitHubAdapter(RepositoryPort):
         items = response.json()
         for item in items:
             if item["type"] == "dir" and not item["name"].startswith("."):
+                # Skip Legacy folder unless explicitly requested
+                if item["name"] == "Legacy" and not include_legacy:
+                    continue
                 # Recurse into subdirectories
                 await self._fetch_wiki_pages_recursive(
-                    client, repo, item["path"], pages
+                    client, repo, item["path"], pages, include_legacy=include_legacy
                 )
             elif item["type"] == "file" and item["name"].endswith(".md"):
                 # Extract title from path
@@ -278,7 +300,7 @@ class GitHubAdapter(RepositoryPort):
                 )
 
     async def search_wiki(
-        self, query: str, repo: str = "wiki", limit: int = 10
+        self, query: str, repo: str = "wiki", limit: int = 10, include_legacy: bool = False
     ) -> list[WikiSearchResult]:
         """Search wiki pages by keyword.
 
@@ -289,13 +311,14 @@ class GitHubAdapter(RepositoryPort):
             query: Search query (keywords)
             repo: Repository containing the wiki
             limit: Maximum results to return
+            include_legacy: If True, include legacy pages. Default False.
 
         Returns:
             List of WikiSearchResult sorted by relevance
         """
         import asyncio
 
-        pages = await self.list_wiki_pages(repo)
+        pages = await self.list_wiki_pages(repo, include_legacy=include_legacy)
         query_terms = query.lower().split()
 
         # Semaphore to limit concurrent requests (avoid rate limiting)

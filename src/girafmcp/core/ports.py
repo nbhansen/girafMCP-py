@@ -22,8 +22,12 @@ class RepositoryPort(ABC):
     """
 
     @abstractmethod
-    async def list_repos(self) -> list[Repository]:
-        """List all repositories in the organization."""
+    async def list_repos(self, include_archived: bool = False) -> list[Repository]:
+        """List all repositories in the organization.
+
+        Args:
+            include_archived: If True, include archived repositories. Default False.
+        """
         ...
 
     @abstractmethod
@@ -41,12 +45,15 @@ class RepositoryPort(ABC):
         ...
 
     @abstractmethod
-    async def search_code(self, query: str, repo: str | None = None) -> list[CodeSearchResult]:
+    async def search_code(
+        self, query: str, repo: str | None = None, include_archived: bool = False
+    ) -> list[CodeSearchResult]:
         """Search for code across repositories.
 
         Args:
             query: Search query
             repo: Optional repository to limit search to
+            include_archived: If True, include archived repositories. Default False.
         """
         ...
 
