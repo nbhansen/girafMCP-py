@@ -975,9 +975,8 @@ async def initialize_static_documents() -> None:
 # === Entry Point ===
 
 
-async def run_server():
-    """Run the MCP server (async)."""
-    # Auto-ingest static documents on startup
+async def run_stdio_server():
+    """Run the MCP server with stdio transport (for Claude Desktop)."""
     await initialize_static_documents()
 
     async with stdio_server() as (read_stream, write_stream):
@@ -988,9 +987,106 @@ async def run_server():
         )
 
 
+def run_http_server(host: str = "0.0.0.0", port: int = 8000):
+    """Run the MCP server with HTTP/SSE transport (for remote access).
+
+    Args:
+        host: Host to bind to. Use "0.0.0.0" for all interfaces.
+        port: Port to listen on.
+    """
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Mount, Route
+    from starlette.responses import JSONResponse
+    import uvicorn
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # Create SSE transport
+    sse = SseServerTransport("/messages/")
+
+    async def handle_sse(request):
+        """Handle SSE connection."""
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await server.run(
+                streams[0],
+                streams[1],
+                server.create_initialization_options(),
+            )
+
+    async def handle_messages(request):
+        """Handle incoming messages."""
+        await sse.handle_post_message(request.scope, request.receive, request._send)
+
+    async def health_check(request):
+        """Health check endpoint."""
+        return JSONResponse({"status": "ok", "server": "giraf-mcp"})
+
+    async def lifespan(app):
+        """Lifespan handler for startup/shutdown."""
+        # Startup
+        logger.info(f"Starting GIRAF MCP server on http://{host}:{port}")
+        logger.info(f"SSE endpoint: http://{host}:{port}/sse")
+        logger.info(f"Messages endpoint: http://{host}:{port}/messages/")
+        await initialize_static_documents()
+        yield
+        # Shutdown
+        logger.info("Shutting down GIRAF MCP server")
+
+    # Create Starlette app
+    app = Starlette(
+        debug=False,
+        routes=[
+            Route("/health", health_check),
+            Route("/sse", handle_sse),
+            Route("/messages/", handle_messages, methods=["POST"]),
+        ],
+        lifespan=lifespan,
+    )
+
+    # Run with uvicorn
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
 def main():
-    """Entry point for the MCP server."""
-    asyncio.run(run_server())
+    """Entry point for the MCP server.
+
+    Usage:
+        giraf-mcp              # Run with stdio (default, for Claude Desktop)
+        giraf-mcp --http       # Run with HTTP/SSE transport
+        giraf-mcp --http --port 9000  # Custom port
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="GIRAF MCP Server - Knowledge assistant for the GIRAF project"
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="Run with HTTP/SSE transport instead of stdio",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("GIRAF_MCP_HOST", "0.0.0.0"),
+        help="Host to bind to (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("GIRAF_MCP_PORT", "8000")),
+        help="Port for HTTP server (default: 8000)",
+    )
+
+    args = parser.parse_args()
+
+    if args.http:
+        run_http_server(host=args.host, port=args.port)
+    else:
+        asyncio.run(run_stdio_server())
 
 
 if __name__ == "__main__":

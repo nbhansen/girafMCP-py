@@ -102,6 +102,36 @@ Add to your Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`
 
 **Note:** The `cwd` field ensures the server runs from the project directory, which is needed for loading `data/` files if `GIRAF_DATA_DIR` is not set.
 
+### HTTP Server Mode (Remote Access)
+
+For shared server deployments, run with HTTP transport:
+
+```bash
+# Install HTTP dependencies
+pip install -e ".[http]"
+
+# Run HTTP server (default port 8000)
+giraf-mcp --http
+
+# Custom host/port
+giraf-mcp --http --host 0.0.0.0 --port 9000
+```
+
+**Endpoints:**
+- `GET /health` - Health check
+- `GET /sse` - SSE connection for MCP protocol
+- `POST /messages/` - Message endpoint for MCP protocol
+
+**Environment variables for HTTP mode:**
+```bash
+GIRAF_MCP_HOST=0.0.0.0    # Default host
+GIRAF_MCP_PORT=8000       # Default port
+```
+
+**Connecting to remote server:**
+
+MCP clients that support SSE transport can connect to `http://your-server:8000/sse`.
+
 ## Available Tools (14)
 
 | Tool | Description |
