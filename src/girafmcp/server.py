@@ -12,7 +12,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from girafmcp.adapters import ChromaAdapter, GitHubAdapter
+from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -20,6 +20,7 @@ server = Server("giraf-mcp")
 # Initialize adapters (lazy loading)
 _github_adapter: GitHubAdapter | None = None
 _chroma_adapter: ChromaAdapter | None = None
+_file_adapter: FileAdapter | None = None
 
 
 def get_github_adapter() -> GitHubAdapter:
@@ -40,6 +41,15 @@ def get_chroma_adapter() -> ChromaAdapter:
         persist_dir = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_data")
         _chroma_adapter = ChromaAdapter(persist_directory=persist_dir)
     return _chroma_adapter
+
+
+def get_file_adapter() -> FileAdapter:
+    """Get or create file adapter."""
+    global _file_adapter
+    if _file_adapter is None:
+        data_dir = os.environ.get("GIRAF_DATA_DIR")
+        _file_adapter = FileAdapter(data_dir=data_dir)
+    return _file_adapter
 
 
 # === Tool Definitions ===
@@ -143,6 +153,38 @@ async def list_tools() -> list[Tool]:
                 "required": ["repo", "path"],
             },
         ),
+        Tool(
+            name="get_project_context",
+            description="Get the current project context including semester focus, priorities, known issues, and recent decisions.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="list_personas",
+            description="List available user personas. Personas help tailor responses to different user backgrounds (CS student, pedagogy student, supervisor, etc.)",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_persona",
+            description="Get details about a specific persona including communication style and focus areas.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "persona_id": {
+                        "type": "string",
+                        "description": "Persona ID (e.g., 'cs_student', 'pedagogy_student', 'supervisor', 'new_student')",
+                    },
+                },
+                "required": ["persona_id"],
+            },
+        ),
     ]
 
 
@@ -179,6 +221,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             line=arguments.get("line"),
             end_line=arguments.get("end_line"),
         )
+
+    elif name == "get_project_context":
+        return await handle_get_project_context()
+
+    elif name == "list_personas":
+        return await handle_list_personas()
+
+    elif name == "get_persona":
+        return await handle_get_persona(persona_id=arguments["persona_id"])
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -316,6 +367,140 @@ async def handle_get_permalink(
         return [TextContent(type="text", text=f"Permalink to {repo}/{path} ({location}):\n{link}")]
     else:
         return [TextContent(type="text", text=f"Permalink to {repo}/{path}:\n{link}")]
+
+
+async def handle_get_project_context() -> list[TextContent]:
+    """Get the current project context."""
+    adapter = get_file_adapter()
+
+    try:
+        context = adapter.get_context()
+
+        lines = ["# GIRAF Project Context\n"]
+
+        # Semester and focus
+        lines.append(f"**Semester:** {context.get('semester', 'Not specified')}")
+        lines.append(f"**Focus:** {context.get('focus', 'Not specified')}")
+        lines.append("")
+
+        # Current priorities
+        priorities = context.get("current_priorities", [])
+        if priorities:
+            lines.append("## Current Priorities")
+            for p in priorities:
+                lines.append(f"- {p}")
+            lines.append("")
+
+        # Known gotchas
+        gotchas = context.get("known_gotchas", [])
+        if gotchas:
+            lines.append("## Known Issues & Workarounds")
+            for g in gotchas:
+                lines.append(f"**Issue:** {g.get('issue', 'Unknown')}")
+                lines.append(f"**Workaround:** {g.get('workaround', 'None provided')}")
+                lines.append("")
+
+        # Recent decisions
+        decisions = context.get("recent_decisions", [])
+        if decisions:
+            lines.append("## Recent Decisions")
+            for d in decisions:
+                lines.append(f"- **{d.get('date', 'Unknown date')}:** {d.get('decision', '')}")
+                if d.get("context"):
+                    lines.append(f"  - Context: {d['context']}")
+            lines.append("")
+
+        # Important links
+        links = context.get("important_links", [])
+        if links:
+            lines.append("## Important Links")
+            for link in links:
+                lines.append(f"- [{link.get('name', 'Link')}]({link.get('url', '#')}): {link.get('description', '')}")
+            lines.append("")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except FileNotFoundError:
+        return [TextContent(type="text", text="Project context file not found. Please create data/context.yaml")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error reading project context: {e}")]
+
+
+async def handle_list_personas() -> list[TextContent]:
+    """List all available personas."""
+    adapter = get_file_adapter()
+
+    try:
+        data = adapter.get_personas()
+        personas = data.get("personas", {})
+        default = data.get("default_persona", "new_student")
+
+        lines = ["# Available Personas\n"]
+        lines.append(f"*Default persona: {default}*\n")
+
+        for persona_id, persona in personas.items():
+            name = persona.get("name", persona_id)
+            desc = persona.get("description", "No description")
+            lines.append(f"## {name}")
+            lines.append(f"**ID:** `{persona_id}`")
+            lines.append(f"**Description:** {desc}")
+            lines.append("")
+
+        lines.append("---")
+        lines.append("Use `get_persona` with a persona ID to get full details.")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except FileNotFoundError:
+        return [TextContent(type="text", text="Personas file not found. Please create data/personas.yaml")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error reading personas: {e}")]
+
+
+async def handle_get_persona(persona_id: str) -> list[TextContent]:
+    """Get details about a specific persona."""
+    adapter = get_file_adapter()
+
+    try:
+        persona = adapter.get_persona(persona_id)
+
+        if persona is None:
+            return [TextContent(type="text", text=f"Persona not found: {persona_id}")]
+
+        lines = [f"# {persona.get('name', persona_id)}\n"]
+        lines.append(f"**Description:** {persona.get('description', 'No description')}")
+        lines.append("")
+
+        # Style
+        style = persona.get("style", {})
+        if style:
+            lines.append("## Communication Style")
+            lines.append(f"- **Tone:** {style.get('tone', 'Not specified')}")
+            lines.append(f"- **Detail level:** {style.get('detail_level', 'Not specified')}")
+            lines.append(f"- **Vocabulary:** {style.get('vocabulary', 'Not specified')}")
+            lines.append("")
+
+        # Focus areas
+        focus = persona.get("focus_areas", [])
+        if focus:
+            lines.append("## Focus Areas")
+            for area in focus:
+                lines.append(f"- {area}")
+            lines.append("")
+
+        # Example responses
+        examples = persona.get("example_responses", [])
+        if examples:
+            lines.append("## Example Responses")
+            for ex in examples:
+                lines.append(f"**Q:** {ex.get('question', '')}")
+                lines.append(f"**A:** {ex.get('answer', '')}")
+                lines.append("")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error getting persona: {e}")]
 
 
 # === Entry Point ===

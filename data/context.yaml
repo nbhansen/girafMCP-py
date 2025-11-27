@@ -1,0 +1,58 @@
+# GIRAF Project Context
+# This file captures the current state of the project for the knowledge assistant.
+# Update this file at the start of each semester or when major changes occur.
+#
+# Last updated: 2025-01-27
+
+semester: "Spring 2025"
+focus: "Maintenance and student onboarding improvements"
+
+# Current priorities - what students should focus on
+current_priorities:
+  - "Familiarize with the codebase structure"
+  - "Review existing documentation in the wiki"
+  - "Set up local development environment"
+
+# Known issues and workarounds that aren't in the docs yet
+known_gotchas:
+  - issue: "Development setup documentation may be outdated"
+    workaround: "Check the README in each repository for the latest setup instructions"
+  - issue: "Some repositories use different default branches"
+    workaround: "foodplanner uses 'staging', wiki uses 'master' - check repo settings"
+
+# Recent architectural or process decisions
+recent_decisions:
+  - date: "2025-01-27"
+    decision: "Created MCP-based knowledge assistant for student support"
+    context: "To help with onboarding and reduce knowledge loss between semesters"
+
+# Active repositories - which ones students are likely working with
+active_repositories:
+  - name: "foodplanner"
+    status: "active"
+    notes: "Main Flutter app for food planning"
+  - name: "foodplanner-api"
+    status: "active"
+    notes: "Backend API for food planner"
+  - name: "wiki"
+    status: "active"
+    notes: "Project documentation - start here!"
+
+# Contact info for getting help
+contacts:
+  - role: "Project Supervisor"
+    note: "Contact your supervisor for project-related questions"
+  - role: "Previous Students"
+    note: "Handover documents in the wiki contain contact info from previous teams"
+
+# Links to important resources
+important_links:
+  - name: "GIRAF Wiki"
+    url: "https://aau-giraf.github.io/wiki/"
+    description: "Main documentation site"
+  - name: "GitHub Organization"
+    url: "https://github.com/aau-giraf"
+    description: "All GIRAF repositories"
+  - name: "Project Website"
+    url: "https://giraf.cs.aau.dk"
+    description: "Public-facing project information"

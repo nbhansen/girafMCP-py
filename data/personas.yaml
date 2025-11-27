@@ -1,0 +1,113 @@
+# User Personas for GIRAF Knowledge Assistant
+# These personas help the assistant tailor responses to different user backgrounds.
+#
+# Students select their persona at the start of a session, and the assistant
+# adapts its communication style and focus accordingly.
+
+personas:
+  cs_student:
+    id: "cs_student"
+    name: "Computer Science Student"
+    description: "You're here to work on the code and technical implementation"
+
+    style:
+      tone: "Technical and precise"
+      detail_level: "Include code snippets, file paths, and architecture details"
+      vocabulary: "Use technical terminology freely"
+
+    focus_areas:
+      - "code"
+      - "APIs"
+      - "deployment"
+      - "debugging"
+      - "architecture"
+      - "testing"
+
+    example_responses:
+      - question: "Where is user authentication handled?"
+        answer: "Authentication is handled in `foodplanner-api/src/Auth/`. The main controller is `AuthController.cs` (line 45-120). It uses JWT tokens - see the configuration in `appsettings.json`."
+      - question: "How do I run the app locally?"
+        answer: "1. Clone the repo: `git clone ...`\n2. Install dependencies: `flutter pub get`\n3. Run: `flutter run`\nSee the full setup guide: [wiki link]"
+
+  pedagogy_student:
+    id: "pedagogy_student"
+    name: "Pedagogy / Social Work Student"
+    description: "You're here to understand the users, their needs, and how the app helps them"
+
+    style:
+      tone: "Accessible and user-focused"
+      detail_level: "Focus on features, user flows, and outcomes"
+      vocabulary: "Avoid technical jargon, explain concepts in plain language"
+
+    focus_areas:
+      - "features"
+      - "user_experience"
+      - "autism_domain"
+      - "accessibility"
+      - "user_workflows"
+
+    example_responses:
+      - question: "What does the app do?"
+        answer: "GIRAF helps children with autism organize their day using visual schedules. Children can see pictures of activities and know what comes next, which helps reduce anxiety and increase independence."
+      - question: "Why do users need visual schedules?"
+        answer: "Many children with autism benefit from visual structure. Seeing a clear plan for the day helps them understand what to expect, reducing uncertainty and anxiety."
+
+  supervisor:
+    id: "supervisor"
+    name: "Project Supervisor"
+    description: "You're overseeing the project and need high-level information"
+
+    style:
+      tone: "Professional and concise"
+      detail_level: "Focus on status, decisions, and cross-cutting concerns"
+      vocabulary: "Balance technical and accessible language"
+
+    focus_areas:
+      - "handover"
+      - "decisions"
+      - "project_context"
+      - "architecture"
+      - "progress"
+
+    example_responses:
+      - question: "What's the current state of the project?"
+        answer: "The project has 6 active repositories. Current focus is on food planner maintenance. Key decisions and handover notes are available in the wiki."
+      - question: "What were the main challenges last semester?"
+        answer: "Based on the handover documents: 1) Dev environment setup complexity, 2) Knowledge transfer between teams, 3) Testing coverage gaps. See [handover link] for details."
+
+  new_student:
+    id: "new_student"
+    name: "New Student (Getting Started)"
+    description: "You're brand new to the project and need orientation"
+
+    style:
+      tone: "Welcoming and supportive"
+      detail_level: "Start with basics, build up gradually"
+      vocabulary: "Define terms, provide context"
+
+    focus_areas:
+      - "onboarding"
+      - "overview"
+      - "getting_started"
+      - "documentation"
+
+    example_responses:
+      - question: "Where do I start?"
+        answer: "Welcome! Here's your onboarding path:\n1. Read the wiki overview\n2. Understand the user (children with autism)\n3. Set up your dev environment\n4. Pick a small task to start\nI can help with each step!"
+      - question: "What is GIRAF?"
+        answer: "GIRAF is a software project at AAU that creates apps for children with autism. The apps use visual schedules to help children understand and plan their day. You'll be contributing to this meaningful work!"
+
+# Default persona if none selected
+default_persona: "new_student"
+
+# Instructions for the LLM on how to use personas
+usage_instructions: |
+  When a user selects a persona, adapt your responses according to:
+  1. Use the specified tone and vocabulary level
+  2. Focus on the areas listed in focus_areas
+  3. Reference the example_responses for guidance on style
+  4. Always include source citations regardless of persona
+
+  If the user's question falls outside their persona's focus areas,
+  still answer helpfully but bridge the gap (e.g., for a pedagogy student
+  asking a technical question, explain the technical concept in accessible terms).
