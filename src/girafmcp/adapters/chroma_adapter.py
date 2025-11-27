@@ -189,5 +189,6 @@ class ChromaAdapter(VectorStorePort):
             language=data.get("language"),
             topic=data.get("topic"),
             tags=tags if tags else [],
+            page=data.get("page"),
             last_updated=data.get("last_updated"),
         )

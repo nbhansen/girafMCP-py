@@ -248,6 +248,39 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        Tool(
+            name="search_static_documents",
+            description="Semantic search over PDFs, research papers, and static documents. Returns content with page-level citations.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (natural language)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by tags (e.g., ['research', 'handover'])",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_static_documents",
+            description="List all ingested static documents (PDFs, research papers) with their tags.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -311,6 +344,16 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     elif name == "list_wiki_pages":
         return await handle_list_wiki_pages()
+
+    elif name == "search_static_documents":
+        return await handle_search_static_documents(
+            query=arguments["query"],
+            limit=arguments.get("limit", 5),
+            tags=arguments.get("tags"),
+        )
+
+    elif name == "list_static_documents":
+        return await handle_list_static_documents()
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -744,11 +787,199 @@ async def handle_list_wiki_pages() -> list[TextContent]:
         return [TextContent(type="text", text=f"Error listing wiki pages: {e}")]
 
 
+async def handle_search_static_documents(
+    query: str, limit: int = 5, tags: list[str] | None = None
+) -> list[TextContent]:
+    """Search static documents (PDFs) using semantic search."""
+    from pathlib import Path
+
+    adapter = get_chroma_adapter()
+
+    try:
+        results = await adapter.search("static_documents", query, limit * 2)  # Fetch extra for filtering
+
+        if not results:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"No static documents found matching: {query}\n\n"
+                    "Note: Documents must be ingested first. Set GIRAF_DOCUMENTS_DIR environment variable.",
+                )
+            ]
+
+        # Filter by tags if provided
+        if tags:
+            results = [
+                r for r in results
+                if r.metadata.tags and any(t in r.metadata.tags for t in tags)
+            ]
+
+        # Limit results after filtering
+        results = results[:limit]
+
+        if not results:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"No documents found matching tags: {tags}\n\n"
+                    "Try removing tag filters or use `list_static_documents` to see available tags.",
+                )
+            ]
+
+        lines = [f"# Static Document Search: {query}\n"]
+        if tags:
+            lines.append(f"*Filtered by tags: {', '.join(tags)}*\n")
+
+        for result in results:
+            # Extract filename from URL/path
+            title = result.metadata.title or Path(result.metadata.url).name
+            page = result.metadata.page
+
+            if page:
+                lines.append(f"## {title} (Page {page})")
+            else:
+                lines.append(f"## {title}")
+
+            lines.append(f"**Source:** {result.metadata.url}")
+
+            if result.metadata.tags:
+                lines.append(f"**Tags:** {', '.join(result.metadata.tags)}")
+
+            lines.append(f"**Relevance:** {result.score:.2%}")
+            lines.append("")
+
+            # Show content snippet
+            snippet = result.content[:500] + "..." if len(result.content) > 500 else result.content
+            lines.append(snippet)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error searching static documents: {e}")]
+
+
+async def handle_list_static_documents() -> list[TextContent]:
+    """List all ingested static documents."""
+    from collections import defaultdict
+
+    adapter = get_chroma_adapter()
+
+    try:
+        # Get count first
+        count = await adapter.count("static_documents")
+
+        if count == 0:
+            return [
+                TextContent(
+                    type="text",
+                    text="No static documents have been ingested.\n\n"
+                    "To ingest documents:\n"
+                    "1. Set GIRAF_DOCUMENTS_DIR environment variable\n"
+                    "2. Add PDF files to that directory\n"
+                    "3. Restart the server (auto-ingest on startup)",
+                )
+            ]
+
+        # Search with empty query to get all documents
+        results = await adapter.search("static_documents", " ", limit=100)
+
+        # Group by file
+        by_file: dict[str, dict] = defaultdict(lambda: {"pages": [], "tags": []})
+        for result in results:
+            if result.id.startswith("_"):  # Skip internal documents
+                continue
+
+            url = result.metadata.url
+            by_file[url]["pages"].append(result.metadata.page)
+            if result.metadata.tags:
+                by_file[url]["tags"] = result.metadata.tags
+
+        lines = [f"# Static Documents ({count} chunks from {len(by_file)} files)\n"]
+
+        # Collect all tags
+        all_tags: set[str] = set()
+        for info in by_file.values():
+            all_tags.update(info["tags"])
+
+        if all_tags:
+            lines.append(f"**Available tags:** {', '.join(sorted(all_tags))}\n")
+
+        for url, info in sorted(by_file.items()):
+            from pathlib import Path
+            filename = Path(url).name
+            page_count = len(set(info["pages"]))
+            tags_str = f" [{', '.join(info['tags'])}]" if info["tags"] else ""
+
+            lines.append(f"- **{filename}**{tags_str} - {page_count} pages")
+
+        lines.append("")
+        lines.append("---")
+        lines.append("Use `search_static_documents` to search within these documents.")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error listing static documents: {e}")]
+
+
+# === Startup Initialization ===
+
+
+async def initialize_static_documents() -> None:
+    """Auto-ingest static documents on server startup."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+    documents_dir = os.environ.get("GIRAF_DOCUMENTS_DIR")
+
+    if not documents_dir:
+        logger.info("GIRAF_DOCUMENTS_DIR not set, skipping static document ingestion")
+        return
+
+    from pathlib import Path
+
+    docs_path = Path(documents_dir)
+    if not docs_path.exists():
+        logger.warning(f"Documents directory not found: {documents_dir}")
+        return
+
+    try:
+        from girafmcp.adapters.pdf_adapter import PDFAdapter
+        from girafmcp.core.services.ingestion_service import IngestionService
+
+        pdf_adapter = PDFAdapter(documents_dir=docs_path)
+        chroma_adapter = get_chroma_adapter()
+        ingestion = IngestionService(pdf_adapter=pdf_adapter, chroma_adapter=chroma_adapter)
+
+        result = await ingestion.ingest_all()
+
+        if result.files_processed > 0:
+            logger.info(
+                f"Ingested {result.files_processed} files ({result.documents_created} chunks)"
+            )
+        if result.files_skipped > 0:
+            logger.info(f"Skipped {result.files_skipped} unchanged files")
+        if result.files_updated > 0:
+            logger.info(f"Updated {result.files_updated} modified files")
+        if result.errors:
+            for error in result.errors:
+                logger.error(error)
+
+    except Exception as e:
+        logger.error(f"Error during document ingestion: {e}")
+
+
 # === Entry Point ===
 
 
 async def run_server():
     """Run the MCP server (async)."""
+    # Auto-ingest static documents on startup
+    await initialize_static_documents()
+
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,

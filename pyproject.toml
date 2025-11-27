@@ -8,6 +8,7 @@ dependencies = [
     "chromadb>=0.4.0",
     "httpx>=0.25.0",
     "python-dotenv>=1.0.0",
+    "pdfplumber>=0.10.0",
 ]
 
 [project.scripts]
@@ -20,6 +21,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
+    "fpdf2>=2.7.0",  # For creating test PDFs
 ]
 
 [build-system]

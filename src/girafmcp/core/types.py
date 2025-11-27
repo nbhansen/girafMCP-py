@@ -12,13 +12,14 @@ class DocumentSource(str, Enum):
     CODE = "code"
     DOMAIN = "domain"
     HANDOVER = "handover"
+    PDF = "pdf"
 
 
 @dataclass
 class DocumentMetadata:
     """Metadata for indexed documents - includes source information for citations."""
 
-    source: Literal["wiki", "code", "domain", "handover"]
+    source: Literal["wiki", "code", "domain", "handover", "pdf"]
     url: str  # URL to the original source (for citations)
 
     # For wiki/docs
@@ -35,6 +36,9 @@ class DocumentMetadata:
     # For domain knowledge
     topic: str | None = None
     tags: list[str] = field(default_factory=list)
+
+    # For PDFs
+    page: int | None = None  # Page number (1-indexed) for citations
 
     # Common
     last_updated: str | None = None
