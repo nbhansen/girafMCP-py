@@ -185,6 +185,34 @@ async def list_tools() -> list[Tool]:
                 "required": ["persona_id"],
             },
         ),
+        Tool(
+            name="search_domain_knowledge",
+            description="Search domain knowledge about autism, visual schedules, sensory considerations, and other background information relevant to GIRAF users.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (keywords about autism, visual schedules, accessibility, etc.)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_domain_topics",
+            description="List all available domain knowledge topics (autism basics, visual schedules, sensory considerations, etc.)",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -230,6 +258,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     elif name == "get_persona":
         return await handle_get_persona(persona_id=arguments["persona_id"])
+
+    elif name == "search_domain_knowledge":
+        return await handle_search_domain_knowledge(
+            query=arguments["query"],
+            limit=arguments.get("limit", 5),
+        )
+
+    elif name == "list_domain_topics":
+        return await handle_list_domain_topics()
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -501,6 +538,88 @@ async def handle_get_persona(persona_id: str) -> list[TextContent]:
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error getting persona: {e}")]
+
+
+async def handle_search_domain_knowledge(
+    query: str, limit: int = 5
+) -> list[TextContent]:
+    """Search domain knowledge files."""
+    adapter = get_file_adapter()
+
+    try:
+        results = adapter.search_domain(query, limit)
+
+        if not results:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"No domain knowledge found matching: {query}\n\n"
+                    "Try different keywords like: autism, visual schedules, sensory, pictograms, accessibility",
+                )
+            ]
+
+        lines = [f"# Domain Knowledge: {query}\n"]
+        for result in results:
+            lines.append(f"## {result.title} - {result.section}")
+            lines.append(f"**Source:** `{result.filename}`")
+            lines.append(f"**Relevance:** {result.relevance:.0%}")
+            lines.append("")
+            lines.append(result.content)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error searching domain knowledge: {e}")]
+
+
+async def handle_list_domain_topics() -> list[TextContent]:
+    """List all domain knowledge topics."""
+    adapter = get_file_adapter()
+
+    try:
+        files = adapter.list_domain_files()
+
+        if not files:
+            return [
+                TextContent(
+                    type="text",
+                    text="No domain knowledge files found.\n\n"
+                    "Domain knowledge can be added in the `data/domain/` directory.",
+                )
+            ]
+
+        lines = ["# Domain Knowledge Topics\n"]
+        lines.append("The following topics are available for searching:\n")
+
+        for file_path in sorted(files):
+            content = file_path.read_text(encoding="utf-8")
+
+            # Extract title
+            import re
+
+            title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            title = title_match.group(1) if title_match else file_path.stem
+
+            # Count sections
+            sections = len(re.findall(r"^##\s+", content, re.MULTILINE))
+
+            lines.append(f"## {title}")
+            lines.append(f"**File:** `{file_path.name}`")
+            lines.append(f"**Sections:** {sections}")
+            lines.append("")
+
+        lines.append("---")
+        lines.append(
+            "Use `search_domain_knowledge` to search for specific topics within these files."
+        )
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error listing domain topics: {e}")]
 
 
 # === Entry Point ===

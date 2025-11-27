@@ -4,10 +4,23 @@ Provides access to project context, personas, and domain knowledge
 stored in local YAML/Markdown files.
 """
 
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+@dataclass
+class DomainSearchResult:
+    """Result from searching domain knowledge."""
+
+    filename: str
+    title: str
+    section: str
+    content: str
+    relevance: float
 
 
 class FileAdapter:
@@ -99,3 +112,72 @@ class FileAdapter:
 
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
+
+    def search_domain(self, query: str, limit: int = 5) -> list[DomainSearchResult]:
+        """Search domain knowledge files for relevant content.
+
+        Performs simple keyword matching with section extraction.
+
+        Args:
+            query: Search query (keywords)
+            limit: Maximum number of results
+
+        Returns:
+            List of search results with relevance scores
+        """
+        results: list[DomainSearchResult] = []
+        query_terms = query.lower().split()
+
+        for file_path in self.list_domain_files():
+            content = file_path.read_text(encoding="utf-8")
+            filename = file_path.name
+
+            # Extract title from first H1
+            title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            title = title_match.group(1) if title_match else filename
+
+            # Split into sections by H2 headers
+            sections = re.split(r"(?=^##\s+)", content, flags=re.MULTILINE)
+
+            for section in sections:
+                if not section.strip():
+                    continue
+
+                section_lower = section.lower()
+
+                # Count keyword matches
+                matches = sum(1 for term in query_terms if term in section_lower)
+                if matches == 0:
+                    continue
+
+                # Calculate relevance (percentage of query terms found)
+                relevance = matches / len(query_terms)
+
+                # Extract section header
+                header_match = re.search(r"^##?\s+(.+)$", section, re.MULTILINE)
+                section_title = header_match.group(1) if header_match else "Introduction"
+
+                # Get a relevant snippet (first paragraph with a match)
+                paragraphs = section.split("\n\n")
+                snippet = ""
+                for para in paragraphs:
+                    if any(term in para.lower() for term in query_terms):
+                        snippet = para.strip()[:500]
+                        break
+
+                if not snippet:
+                    snippet = section.strip()[:500]
+
+                results.append(
+                    DomainSearchResult(
+                        filename=filename,
+                        title=title,
+                        section=section_title,
+                        content=snippet,
+                        relevance=relevance,
+                    )
+                )
+
+        # Sort by relevance and limit
+        results.sort(key=lambda r: r.relevance, reverse=True)
+        return results[:limit]
