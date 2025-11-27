@@ -220,6 +220,34 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        Tool(
+            name="search_wiki",
+            description="Search the GIRAF wiki documentation. Fetches pages live from GitHub and performs keyword search. Returns matching pages with URLs.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (keywords to find in wiki pages)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_wiki_pages",
+            description="List all pages in the GIRAF wiki. Returns page titles and URLs.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -274,6 +302,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     elif name == "list_domain_topics":
         return await handle_list_domain_topics()
+
+    elif name == "search_wiki":
+        return await handle_search_wiki(
+            query=arguments["query"],
+            limit=arguments.get("limit", 5),
+        )
+
+    elif name == "list_wiki_pages":
+        return await handle_list_wiki_pages()
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -627,6 +664,84 @@ async def handle_list_domain_topics() -> list[TextContent]:
 
     except Exception as e:
         return [TextContent(type="text", text=f"Error listing domain topics: {e}")]
+
+
+async def handle_search_wiki(query: str, limit: int = 5) -> list[TextContent]:
+    """Search wiki documentation."""
+    adapter = get_github_adapter()
+
+    try:
+        results = await adapter.search_wiki(query, limit=limit)
+
+        if not results:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"No wiki pages found matching: {query}\n\n"
+                    "Try different keywords or use `list_wiki_pages` to see all available pages.",
+                )
+            ]
+
+        lines = [f"# Wiki Search Results: {query}\n"]
+        for result in results:
+            lines.append(f"## {result.page.title}")
+            lines.append(f"**URL:** {result.page.url}")
+            lines.append(f"**GitHub:** {result.page.github_url}")
+            lines.append(f"**Relevance:** {result.relevance:.0%}")
+            lines.append("")
+            if result.matches:
+                lines.append("**Matching content:**")
+                for match in result.matches[:3]:
+                    lines.append(f"> {match}")
+                lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error searching wiki: {e}")]
+
+
+async def handle_list_wiki_pages() -> list[TextContent]:
+    """List all wiki pages."""
+    adapter = get_github_adapter()
+
+    try:
+        pages = await adapter.list_wiki_pages()
+
+        if not pages:
+            return [
+                TextContent(
+                    type="text",
+                    text="No wiki pages found.",
+                )
+            ]
+
+        # Group by top-level folder
+        grouped: dict[str, list] = {}
+        for page in pages:
+            parts = page.path.replace("docs/", "").split("/")
+            folder = parts[0] if len(parts) > 1 else "Root"
+            if folder not in grouped:
+                grouped[folder] = []
+            grouped[folder].append(page)
+
+        lines = [f"# GIRAF Wiki Pages ({len(pages)} total)\n"]
+
+        for folder in sorted(grouped.keys()):
+            lines.append(f"## {folder.replace('_', ' ')}")
+            for page in grouped[folder]:
+                lines.append(f"- [{page.title}]({page.url})")
+            lines.append("")
+
+        lines.append("---")
+        lines.append("Use `search_wiki` to search for specific content.")
+
+        return [TextContent(type="text", text="\n".join(lines))]
+
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error listing wiki pages: {e}")]
 
 
 # === Entry Point ===

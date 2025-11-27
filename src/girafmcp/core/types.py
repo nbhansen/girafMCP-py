@@ -89,3 +89,22 @@ class CodeSearchResult:
     path: str
     url: str  # Permalink to the file
     matches: list[str]  # Matching lines/snippets
+
+
+@dataclass
+class WikiPage:
+    """A wiki documentation page."""
+
+    path: str  # Path within docs/ folder
+    title: str  # Extracted from content or filename
+    url: str  # URL to the live wiki page
+    github_url: str  # URL to source on GitHub
+
+
+@dataclass
+class WikiSearchResult:
+    """Result from a wiki search."""
+
+    page: WikiPage
+    matches: list[str]  # Matching lines/snippets
+    relevance: float  # 0-1 score based on keyword matches

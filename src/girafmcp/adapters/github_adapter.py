@@ -9,7 +9,16 @@ import os
 
 import httpx
 
-from girafmcp.core import CodeSearchResult, FileContent, Repository, RepositoryPort
+import re
+
+from girafmcp.core import (
+    CodeSearchResult,
+    FileContent,
+    Repository,
+    RepositoryPort,
+    WikiPage,
+    WikiSearchResult,
+)
 
 
 class GitHubAdapter(RepositoryPort):
@@ -201,3 +210,150 @@ class GitHubAdapter(RepositoryPort):
                 url = f"{url}#L{line}"
 
         return url
+
+    # === Wiki Methods ===
+
+    async def list_wiki_pages(self, repo: str = "wiki") -> list[WikiPage]:
+        """List all markdown pages in the wiki.
+
+        Args:
+            repo: Repository containing the wiki (default: 'wiki')
+
+        Returns:
+            List of WikiPage objects
+        """
+        pages: list[WikiPage] = []
+
+        async with httpx.AsyncClient() as client:
+            await self._fetch_wiki_pages_recursive(client, repo, "docs", pages)
+
+        return pages
+
+    async def _fetch_wiki_pages_recursive(
+        self,
+        client: httpx.AsyncClient,
+        repo: str,
+        path: str,
+        pages: list[WikiPage],
+    ) -> None:
+        """Recursively fetch wiki pages from a directory."""
+        response = await client.get(
+            f"{self.base_url}/repos/{self.org}/{repo}/contents/{path}",
+            headers=self._headers,
+        )
+
+        if response.status_code != 200:
+            return
+
+        items = response.json()
+        for item in items:
+            if item["type"] == "dir" and not item["name"].startswith("."):
+                # Recurse into subdirectories
+                await self._fetch_wiki_pages_recursive(
+                    client, repo, item["path"], pages
+                )
+            elif item["type"] == "file" and item["name"].endswith(".md"):
+                # Extract title from path
+                name = item["name"].replace(".md", "").replace("_", " ")
+                if name == "index":
+                    # Use parent folder name for index files
+                    parts = item["path"].split("/")
+                    if len(parts) > 2:
+                        name = parts[-2].replace("_", " ")
+                    else:
+                        name = "Home"
+
+                # Build wiki URL (MkDocs style)
+                wiki_path = item["path"].replace("docs/", "").replace(".md", "/")
+                if wiki_path.endswith("index/"):
+                    wiki_path = wiki_path.replace("index/", "")
+
+                pages.append(
+                    WikiPage(
+                        path=item["path"],
+                        title=name.title(),
+                        url=f"https://aau-giraf.github.io/wiki/{wiki_path}",
+                        github_url=item["html_url"],
+                    )
+                )
+
+    async def search_wiki(
+        self, query: str, repo: str = "wiki", limit: int = 10
+    ) -> list[WikiSearchResult]:
+        """Search wiki pages by keyword.
+
+        Fetches wiki pages live and performs keyword search.
+        Uses parallel fetching for performance.
+
+        Args:
+            query: Search query (keywords)
+            repo: Repository containing the wiki
+            limit: Maximum results to return
+
+        Returns:
+            List of WikiSearchResult sorted by relevance
+        """
+        import asyncio
+
+        pages = await self.list_wiki_pages(repo)
+        query_terms = query.lower().split()
+
+        # Semaphore to limit concurrent requests (avoid rate limiting)
+        semaphore = asyncio.Semaphore(10)
+
+        async def search_page(
+            client: httpx.AsyncClient, page: WikiPage
+        ) -> WikiSearchResult | None:
+            """Search a single page for matches."""
+            async with semaphore:
+                try:
+                    response = await client.get(
+                        f"{self.base_url}/repos/{self.org}/{repo}/contents/{page.path}",
+                        headers=self._headers,
+                    )
+                    if response.status_code != 200:
+                        return None
+
+                    data = response.json()
+                    content = ""
+                    if data.get("content"):
+                        content = base64.b64decode(data["content"]).decode("utf-8")
+
+                    # Search for matches
+                    title_lower = page.title.lower()
+                    matches: list[str] = []
+                    term_hits = 0
+
+                    for term in query_terms:
+                        # Title match (weighted higher)
+                        if term in title_lower:
+                            term_hits += 2
+
+                        # Find matching lines
+                        for line in content.split("\n"):
+                            if term in line.lower() and line.strip():
+                                clean_line = line.strip()
+                                if clean_line and clean_line not in matches:
+                                    matches.append(clean_line[:200])
+                                    term_hits += 1
+
+                    if term_hits > 0:
+                        relevance = min(1.0, term_hits / (len(query_terms) * 5))
+                        return WikiSearchResult(
+                            page=page,
+                            matches=matches[:5],
+                            relevance=relevance,
+                        )
+                except Exception:
+                    pass
+                return None
+
+        # Fetch and search all pages in parallel
+        async with httpx.AsyncClient() as client:
+            tasks = [search_page(client, page) for page in pages]
+            results_raw = await asyncio.gather(*tasks)
+
+        # Filter out None results and sort
+        results = [r for r in results_raw if r is not None]
+        results.sort(key=lambda r: r.relevance, reverse=True)
+        return results[:limit]

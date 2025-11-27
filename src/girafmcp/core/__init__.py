@@ -9,6 +9,8 @@ from .types import (
     FileContent,
     Repository,
     SearchResult,
+    WikiPage,
+    WikiSearchResult,
 )
 
 __all__ = [
@@ -21,4 +23,6 @@ __all__ = [
     "RepositoryPort",
     "SearchResult",
     "VectorStorePort",
+    "WikiPage",
+    "WikiSearchResult",
 ]
