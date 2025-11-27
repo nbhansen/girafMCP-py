@@ -6,7 +6,14 @@ and domain knowledge to help students working on the GIRAF project.
 
 import asyncio
 import os
+from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
+
+# Load .env file from project root
+_project_root = Path(__file__).parent.parent.parent
+load_dotenv(_project_root / ".env")
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

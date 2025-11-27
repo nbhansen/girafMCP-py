@@ -1,0 +1,1 @@
+- plan is here: ~/.claude/plans/imperative-questing-allen.md
