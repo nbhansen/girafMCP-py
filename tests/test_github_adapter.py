@@ -6,11 +6,15 @@ the GitHub API to fetch repository information, file content, and
 generate correct permalinks for source attribution.
 """
 
+import os
 import pytest
 
 from girafmcp.adapters.github_adapter import GitHubAdapter
 
 
+@pytest.mark.skipif(
+    not os.environ.get("GITHUB_TOKEN"), reason="GITHUB_TOKEN not set"
+)
 class TestGitHubAdapter:
     """Integration tests for GitHubAdapter."""
 

@@ -27,6 +27,7 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "fpdf2>=2.7.0",  # For creating test PDFs
+    "types-PyYAML>=6.0.0",  # For type checking
 ]
 
 [build-system]
