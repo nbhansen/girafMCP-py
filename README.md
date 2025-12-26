@@ -69,6 +69,14 @@ giraf-mcp
 # HTTP mode for remote/shared access
 pip install -e ".[http]"
 giraf-mcp --http --port 8000
+
+# Docker mode
+docker build -t giraf-mcp .
+docker run -p 8000:8000 \
+  -e GITHUB_TOKEN=your_token \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/chroma_data:/app/chroma_data \
+  giraf-mcp
 ```
 
 ### Claude Desktop Configuration
