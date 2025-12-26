@@ -104,3 +104,15 @@ The project follows a **Hexagonal Architecture**:
 *   `pyproject.toml`: Dependency and build configuration.
 *   `src/girafmcp/server.py`: Entry point for the MCP server.
 *   `data/context.yaml`: Dynamic project context.
+
+## Improvement Plan
+
+The following improvements are planned to enhance the project's quality and deployability:
+
+1.  **Refactor `server.py` (Completed):** Modularize tool handlers into `src/girafmcp/tools/` to prevent a "God Object" anti-pattern and improve maintainability.
+2.  **Add CI/CD Pipeline (Next):** Implement GitHub Actions workflows (`.github/workflows/ci.yml`) to automate:
+    *   Running tests (`pytest`)
+    *   Linting code (`ruff check`)
+    *   Type checking (`mypy`)
+3.  **Containerization (Planned):** Create a `Dockerfile` to containerize the application, simplifying deployment for the HTTP server mode.
+4.  **Consistent Logging (Planned):** Integrate the standard `logging` module throughout tool handlers to replace simple error strings with structured logs for better debugging.
