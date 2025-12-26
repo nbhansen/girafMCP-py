@@ -505,6 +505,15 @@ def main() -> None:
         giraf-mcp --http --port 9000  # Custom port
     """
     import argparse
+    import logging
+    import sys
+
+    # Configure root logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        stream=sys.stderr,
+    )
 
     parser = argparse.ArgumentParser(
         description="GIRAF MCP Server - Knowledge assistant for the GIRAF project"
