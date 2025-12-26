@@ -1,0 +1,16 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.coverage
+htmlcov
+.mypy_cache
+.env
+chroma_data/
+*.pdf
+docs/
+tests/
+CONTRIBUTING.md
+NEXT_STEPS.md
+GEMINI.md
+README.md

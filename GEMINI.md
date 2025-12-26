@@ -50,6 +50,18 @@ The project follows a **Hexagonal Architecture**:
     pip install -e ".[http]"
     giraf-mcp --http --port 8000
     ```
+*   **Docker Mode:**
+    ```bash
+    # Build the image
+    docker build -t giraf-mcp .
+
+    # Run the container (HTTP mode)
+    docker run -p 8000:8000 \
+      -e GITHUB_TOKEN=your_token \
+      -v $(pwd)/data:/app/data \
+      -v $(pwd)/chroma_data:/app/chroma_data \
+      giraf-mcp
+    ```
 
 ### Testing
 *   **Run all tests:**
@@ -110,9 +122,9 @@ The project follows a **Hexagonal Architecture**:
 The following improvements are planned to enhance the project's quality and deployability:
 
 1.  **Refactor `server.py` (Completed):** Modularize tool handlers into `src/girafmcp/tools/` to prevent a "God Object" anti-pattern and improve maintainability.
-2.  **Add CI/CD Pipeline (Next):** Implement GitHub Actions workflows (`.github/workflows/ci.yml`) to automate:
+2.  **Add CI/CD Pipeline (Completed):** Implement GitHub Actions workflows (`.github/workflows/ci.yml`) to automate:
     *   Running tests (`pytest`)
     *   Linting code (`ruff check`)
     *   Type checking (`mypy`)
-3.  **Containerization (Planned):** Create a `Dockerfile` to containerize the application, simplifying deployment for the HTTP server mode.
-4.  **Consistent Logging (Planned):** Integrate the standard `logging` module throughout tool handlers to replace simple error strings with structured logs for better debugging.
+3.  **Containerization (Completed):** Create a `Dockerfile` to containerize the application, simplifying deployment for the HTTP server mode.
+4.  **Consistent Logging (Next):** Integrate the standard `logging` module throughout tool handlers to replace simple error strings with structured logs for better debugging.
