@@ -1,9 +1,6 @@
 """Search-related tool handlers using vector store."""
 
 import logging
-from pathlib import Path
-from collections import defaultdict
-from typing import Any
 from mcp.types import TextContent
 from girafmcp.adapters import ChromaAdapter
 
@@ -16,7 +13,24 @@ async def handle_search_documentation(
     """Search documentation using semantic search."""
     try:
         results = await adapter.search("wiki", query, limit)
-# ...
+        lines = [f"# Documentation Search Results for '{query}'", ""]
+        
+        for result in results:
+            title = result.metadata.title or "Untitled"
+            section = f" - {result.metadata.section}" if result.metadata.section else ""
+            lines.append(f"## {title}{section}")
+            lines.append(f"**Score:** {result.score:.2f}")
+            if result.metadata.url:
+                lines.append(f"**Source:** {result.metadata.url}")
+            lines.append("")
+            lines.append(result.content)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        if not results:
+            lines.append("No results found.")
+
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
@@ -29,8 +43,37 @@ async def handle_search_static_documents(
 ) -> list[TextContent]:
     """Search static documents (PDFs) using semantic search."""
     try:
-        # Fetch extra for filtering if tags are provided
-# ...
+        # Note: ChromaDB adapter doesn't support tag filtering in search() yet in this implementation
+        # For now, we search and then filter, or just search if tags not supported
+        results = await adapter.search("documents", query, limit * 2) # Fetch extra for filtering
+        
+        if tags:
+            results = [
+                r for r in results 
+                if any(tag in r.metadata.tags for tag in tags)
+            ]
+            results = results[:limit]
+        else:
+            results = results[:limit]
+
+        lines = [f"# Static Documents Search Results for '{query}'", ""]
+        
+        for result in results:
+            title = result.metadata.title or result.metadata.source or "Untitled"
+            page_info = f" (Page {result.metadata.page})" if result.metadata.page else ""
+            lines.append(f"## {title}{page_info}")
+            lines.append(f"**Score:** {result.score:.2f}")
+            if result.metadata.tags:
+                lines.append(f"**Tags:** {', '.join(result.metadata.tags)}")
+            lines.append("")
+            lines.append(result.content)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        if not results:
+            lines.append("No results found.")
+
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
@@ -41,8 +84,15 @@ async def handle_search_static_documents(
 async def handle_list_static_documents(adapter: ChromaAdapter) -> list[TextContent]:
     """List all ingested static documents."""
     try:
-        # Get count first
-# ...
+        count = await adapter.count("documents")
+        lines = [
+            "# Static Documents", 
+            "", 
+            f"Total documents indexed: {count}",
+            "",
+            "Note: Listing individual documents is not yet supported by the adapter."
+        ]
+        
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
