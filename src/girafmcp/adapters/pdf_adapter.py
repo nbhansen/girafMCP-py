@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 import pdfplumber
-import yaml  # type: ignore
+import yaml
 
 from girafmcp.core.types import Document, DocumentMetadata
 
