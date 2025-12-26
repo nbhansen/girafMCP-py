@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 import pdfplumber
-import yaml
+import yaml  # type: ignore
 
 from girafmcp.core.types import Document, DocumentMetadata
 
@@ -118,7 +118,7 @@ class PDFAdapter:
         try:
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = yaml.safe_load(f) or {}
-                return meta.get("tags", [])
+                return list(meta.get("tags", []))
         except Exception as e:
             logger.warning(f"Error loading _meta.yaml from {folder}: {e}")
             return []
@@ -168,9 +168,7 @@ class PDFAdapter:
             chunk_idx: Chunk index within the page.
 
         Returns:
-            Unique string ID for the document.
+            Unique ID for the chunk
         """
-        # Create a unique ID based on file path, page, and chunk
-        id_string = f"{pdf_path}:page{page_num}:chunk{chunk_idx}"
         hash_suffix = hashlib.md5(str(pdf_path).encode()).hexdigest()[:8]
         return f"pdf-{pdf_path.stem}-p{page_num}-c{chunk_idx}-{hash_suffix}"

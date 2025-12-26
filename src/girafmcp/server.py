@@ -7,7 +7,7 @@ and domain knowledge to help students working on the GIRAF project.
 import asyncio
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from dotenv import load_dotenv
 
@@ -15,11 +15,12 @@ from dotenv import load_dotenv
 _project_root = Path(__file__).parent.parent.parent
 load_dotenv(_project_root / ".env")
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.server import Server  # noqa: E402
+from mcp.server.stdio import stdio_server  # noqa: E402
+from mcp.types import TextContent, Tool  # noqa: E402
 
-from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter
+from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter  # noqa: E402
+from girafmcp.tools import context, github, search  # noqa: E402
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -62,7 +63,7 @@ def get_file_adapter() -> FileAdapter:
 # === Tool Definitions ===
 
 
-@server.list_tools()
+@server.list_tools()  # type: ignore
 async def list_tools() -> list[Tool]:
     """List all available tools."""
     return [
@@ -284,34 +285,38 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-@server.call_tool()
+@server.call_tool()  # type: ignore
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
 
     if name == "list_repositories":
-        return await handle_list_repositories()
+        return await github.handle_list_repositories(get_github_adapter())
 
     elif name == "get_file":
-        return await handle_get_file(
+        return await github.handle_get_file(
+            get_github_adapter(),
             repo=arguments["repo"],
             path=arguments["path"],
             ref=arguments.get("ref"),
         )
 
     elif name == "search_code":
-        return await handle_search_code(
+        return await github.handle_search_code(
+            get_github_adapter(),
             query=arguments["query"],
             repo=arguments.get("repo"),
         )
 
     elif name == "search_documentation":
-        return await handle_search_documentation(
+        return await search.handle_search_documentation(
+            get_chroma_adapter(),
             query=arguments["query"],
             limit=arguments.get("limit", 5),
         )
 
     elif name == "get_permalink":
-        return await handle_get_permalink(
+        return await github.handle_get_permalink(
+            get_github_adapter(),
             repo=arguments["repo"],
             path=arguments["path"],
             line=arguments.get("line"),
@@ -319,610 +324,49 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         )
 
     elif name == "get_project_context":
-        return await handle_get_project_context()
+        return await context.handle_get_project_context(get_file_adapter())
 
     elif name == "list_personas":
-        return await handle_list_personas()
+        return await context.handle_list_personas(get_file_adapter())
 
     elif name == "get_persona":
-        return await handle_get_persona(persona_id=arguments["persona_id"])
+        return await context.handle_get_persona(
+            get_file_adapter(), persona_id=arguments["persona_id"]
+        )
 
     elif name == "search_domain_knowledge":
-        return await handle_search_domain_knowledge(
+        return await context.handle_search_domain_knowledge(
+            get_file_adapter(),
             query=arguments["query"],
             limit=arguments.get("limit", 5),
         )
 
     elif name == "list_domain_topics":
-        return await handle_list_domain_topics()
+        return await context.handle_list_domain_topics(get_file_adapter())
 
     elif name == "search_wiki":
-        return await handle_search_wiki(
+        return await github.handle_search_wiki(
+            get_github_adapter(),
             query=arguments["query"],
             limit=arguments.get("limit", 5),
         )
 
     elif name == "list_wiki_pages":
-        return await handle_list_wiki_pages()
+        return await github.handle_list_wiki_pages(get_github_adapter())
 
     elif name == "search_static_documents":
-        return await handle_search_static_documents(
+        return await search.handle_search_static_documents(
+            get_chroma_adapter(),
             query=arguments["query"],
             limit=arguments.get("limit", 5),
             tags=arguments.get("tags"),
         )
 
     elif name == "list_static_documents":
-        return await handle_list_static_documents()
+        return await search.handle_list_static_documents(get_chroma_adapter())
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
-
-
-# === Tool Handlers ===
-
-
-async def handle_list_repositories() -> list[TextContent]:
-    """List all GIRAF repositories."""
-    adapter = get_github_adapter()
-
-    try:
-        repos = await adapter.list_repos()
-
-        lines = ["# GIRAF Repositories\n"]
-        for repo in repos:
-            lang = f" ({repo.language})" if repo.language else ""
-            desc = repo.description or "No description"
-            lines.append(f"## {repo.name}{lang}")
-            lines.append(f"{desc}")
-            lines.append(f"- URL: {repo.url}")
-            lines.append(f"- Default branch: {repo.default_branch}")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error listing repositories: {e}")]
-
-
-async def handle_get_file(
-    repo: str, path: str, ref: str | None = None
-) -> list[TextContent]:
-    """Get file content from a repository."""
-    adapter = get_github_adapter()
-
-    try:
-        file = await adapter.get_file(repo, path, ref)
-
-        result = f"""# {repo}/{path}
-
-**Permalink:** {file.url}
-
-```
-{file.content}
-```
-"""
-        return [TextContent(type="text", text=result)]
-
-    except FileNotFoundError:
-        return [TextContent(type="text", text=f"File not found: {repo}/{path}")]
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error fetching file: {e}")]
-
-
-async def handle_search_code(
-    query: str, repo: str | None = None
-) -> list[TextContent]:
-    """Search for code across repositories."""
-    adapter = get_github_adapter()
-
-    try:
-        results = await adapter.search_code(query, repo)
-
-        if not results:
-            return [TextContent(type="text", text=f"No code found matching: {query}")]
-
-        lines = [f"# Code Search Results for: {query}\n"]
-        for result in results:
-            lines.append(f"## {result.repo}/{result.path}")
-            lines.append(f"- URL: {result.url}")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching code: {e}")]
-
-
-async def handle_search_documentation(
-    query: str, limit: int = 5
-) -> list[TextContent]:
-    """Search documentation using semantic search."""
-    adapter = get_chroma_adapter()
-
-    try:
-        results = await adapter.search("wiki", query, limit)
-
-        if not results:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"No documentation found matching: {query}\n\n"
-                    "Note: The documentation index may need to be populated first.",
-                )
-            ]
-
-        lines = [f"# Documentation Search Results for: {query}\n"]
-        for result in results:
-            title = result.metadata.title or "Untitled"
-            lines.append(f"## {title}")
-            lines.append(f"**Source:** {result.metadata.url}")
-            lines.append(f"**Relevance:** {result.score:.2%}")
-            lines.append("")
-            # Show snippet of content
-            snippet = result.content[:500] + "..." if len(result.content) > 500 else result.content
-            lines.append(snippet)
-            lines.append("")
-            lines.append("---")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching documentation: {e}")]
-
-
-async def handle_get_permalink(
-    repo: str,
-    path: str,
-    line: int | None = None,
-    end_line: int | None = None,
-) -> list[TextContent]:
-    """Generate a permalink for citation."""
-    adapter = get_github_adapter()
-
-    link = adapter.get_permalink(repo, path, line, end_line)
-
-    if line is not None:
-        if end_line is not None:
-            location = f"lines {line}-{end_line}"
-        else:
-            location = f"line {line}"
-        return [TextContent(type="text", text=f"Permalink to {repo}/{path} ({location}):\n{link}")]
-    else:
-        return [TextContent(type="text", text=f"Permalink to {repo}/{path}:\n{link}")]
-
-
-async def handle_get_project_context() -> list[TextContent]:
-    """Get the current project context."""
-    adapter = get_file_adapter()
-
-    try:
-        context = adapter.get_context()
-
-        lines = ["# GIRAF Project Context\n"]
-
-        # Semester and focus
-        lines.append(f"**Semester:** {context.get('semester', 'Not specified')}")
-        lines.append(f"**Focus:** {context.get('focus', 'Not specified')}")
-        lines.append("")
-
-        # Current priorities
-        priorities = context.get("current_priorities", [])
-        if priorities:
-            lines.append("## Current Priorities")
-            for p in priorities:
-                lines.append(f"- {p}")
-            lines.append("")
-
-        # Known gotchas
-        gotchas = context.get("known_gotchas", [])
-        if gotchas:
-            lines.append("## Known Issues & Workarounds")
-            for g in gotchas:
-                lines.append(f"**Issue:** {g.get('issue', 'Unknown')}")
-                lines.append(f"**Workaround:** {g.get('workaround', 'None provided')}")
-                lines.append("")
-
-        # Recent decisions
-        decisions = context.get("recent_decisions", [])
-        if decisions:
-            lines.append("## Recent Decisions")
-            for d in decisions:
-                lines.append(f"- **{d.get('date', 'Unknown date')}:** {d.get('decision', '')}")
-                if d.get("context"):
-                    lines.append(f"  - Context: {d['context']}")
-            lines.append("")
-
-        # Important links
-        links = context.get("important_links", [])
-        if links:
-            lines.append("## Important Links")
-            for link in links:
-                lines.append(f"- [{link.get('name', 'Link')}]({link.get('url', '#')}): {link.get('description', '')}")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except FileNotFoundError:
-        return [TextContent(type="text", text="Project context file not found. Please create data/context.yaml")]
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error reading project context: {e}")]
-
-
-async def handle_list_personas() -> list[TextContent]:
-    """List all available personas."""
-    adapter = get_file_adapter()
-
-    try:
-        data = adapter.get_personas()
-        personas = data.get("personas", {})
-        default = data.get("default_persona", "new_student")
-
-        lines = ["# Available Personas\n"]
-        lines.append(f"*Default persona: {default}*\n")
-
-        for persona_id, persona in personas.items():
-            name = persona.get("name", persona_id)
-            desc = persona.get("description", "No description")
-            lines.append(f"## {name}")
-            lines.append(f"**ID:** `{persona_id}`")
-            lines.append(f"**Description:** {desc}")
-            lines.append("")
-
-        lines.append("---")
-        lines.append("Use `get_persona` with a persona ID to get full details.")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except FileNotFoundError:
-        return [TextContent(type="text", text="Personas file not found. Please create data/personas.yaml")]
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error reading personas: {e}")]
-
-
-async def handle_get_persona(persona_id: str) -> list[TextContent]:
-    """Get details about a specific persona."""
-    adapter = get_file_adapter()
-
-    try:
-        persona = adapter.get_persona(persona_id)
-
-        if persona is None:
-            return [TextContent(type="text", text=f"Persona not found: {persona_id}")]
-
-        lines = [f"# {persona.get('name', persona_id)}\n"]
-        lines.append(f"**Description:** {persona.get('description', 'No description')}")
-        lines.append("")
-
-        # Style
-        style = persona.get("style", {})
-        if style:
-            lines.append("## Communication Style")
-            lines.append(f"- **Tone:** {style.get('tone', 'Not specified')}")
-            lines.append(f"- **Detail level:** {style.get('detail_level', 'Not specified')}")
-            lines.append(f"- **Vocabulary:** {style.get('vocabulary', 'Not specified')}")
-            lines.append("")
-
-        # Focus areas
-        focus = persona.get("focus_areas", [])
-        if focus:
-            lines.append("## Focus Areas")
-            for area in focus:
-                lines.append(f"- {area}")
-            lines.append("")
-
-        # Example responses
-        examples = persona.get("example_responses", [])
-        if examples:
-            lines.append("## Example Responses")
-            for ex in examples:
-                lines.append(f"**Q:** {ex.get('question', '')}")
-                lines.append(f"**A:** {ex.get('answer', '')}")
-                lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error getting persona: {e}")]
-
-
-async def handle_search_domain_knowledge(
-    query: str, limit: int = 5
-) -> list[TextContent]:
-    """Search domain knowledge files."""
-    adapter = get_file_adapter()
-
-    try:
-        results = adapter.search_domain(query, limit)
-
-        if not results:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"No domain knowledge found matching: {query}\n\n"
-                    "Try different keywords like: autism, visual schedules, sensory, pictograms, accessibility",
-                )
-            ]
-
-        lines = [f"# Domain Knowledge: {query}\n"]
-        for result in results:
-            lines.append(f"## {result.title} - {result.section}")
-            lines.append(f"**Source:** `{result.filename}`")
-            lines.append(f"**Relevance:** {result.relevance:.0%}")
-            lines.append("")
-            lines.append(result.content)
-            lines.append("")
-            lines.append("---")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching domain knowledge: {e}")]
-
-
-async def handle_list_domain_topics() -> list[TextContent]:
-    """List all domain knowledge topics."""
-    adapter = get_file_adapter()
-
-    try:
-        files = adapter.list_domain_files()
-
-        if not files:
-            return [
-                TextContent(
-                    type="text",
-                    text="No domain knowledge files found.\n\n"
-                    "Domain knowledge can be added in the `data/domain/` directory.",
-                )
-            ]
-
-        lines = ["# Domain Knowledge Topics\n"]
-        lines.append("The following topics are available for searching:\n")
-
-        for file_path in sorted(files):
-            content = file_path.read_text(encoding="utf-8")
-
-            # Extract title
-            import re
-
-            title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
-            title = title_match.group(1) if title_match else file_path.stem
-
-            # Count sections
-            sections = len(re.findall(r"^##\s+", content, re.MULTILINE))
-
-            lines.append(f"## {title}")
-            lines.append(f"**File:** `{file_path.name}`")
-            lines.append(f"**Sections:** {sections}")
-            lines.append("")
-
-        lines.append("---")
-        lines.append(
-            "Use `search_domain_knowledge` to search for specific topics within these files."
-        )
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error listing domain topics: {e}")]
-
-
-async def handle_search_wiki(query: str, limit: int = 5) -> list[TextContent]:
-    """Search wiki documentation."""
-    adapter = get_github_adapter()
-
-    try:
-        results = await adapter.search_wiki(query, limit=limit)
-
-        if not results:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"No wiki pages found matching: {query}\n\n"
-                    "Try different keywords or use `list_wiki_pages` to see all available pages.",
-                )
-            ]
-
-        lines = [f"# Wiki Search Results: {query}\n"]
-        for result in results:
-            lines.append(f"## {result.page.title}")
-            lines.append(f"**URL:** {result.page.url}")
-            lines.append(f"**GitHub:** {result.page.github_url}")
-            lines.append(f"**Relevance:** {result.relevance:.0%}")
-            lines.append("")
-            if result.matches:
-                lines.append("**Matching content:**")
-                for match in result.matches[:3]:
-                    lines.append(f"> {match}")
-                lines.append("")
-            lines.append("---")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching wiki: {e}")]
-
-
-async def handle_list_wiki_pages() -> list[TextContent]:
-    """List all wiki pages."""
-    adapter = get_github_adapter()
-
-    try:
-        pages = await adapter.list_wiki_pages()
-
-        if not pages:
-            return [
-                TextContent(
-                    type="text",
-                    text="No wiki pages found.",
-                )
-            ]
-
-        # Group by top-level folder
-        grouped: dict[str, list] = {}
-        for page in pages:
-            parts = page.path.replace("docs/", "").split("/")
-            folder = parts[0] if len(parts) > 1 else "Root"
-            if folder not in grouped:
-                grouped[folder] = []
-            grouped[folder].append(page)
-
-        lines = [f"# GIRAF Wiki Pages ({len(pages)} total)\n"]
-
-        for folder in sorted(grouped.keys()):
-            lines.append(f"## {folder.replace('_', ' ')}")
-            for page in grouped[folder]:
-                lines.append(f"- [{page.title}]({page.url})")
-            lines.append("")
-
-        lines.append("---")
-        lines.append("Use `search_wiki` to search for specific content.")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error listing wiki pages: {e}")]
-
-
-async def handle_search_static_documents(
-    query: str, limit: int = 5, tags: list[str] | None = None
-) -> list[TextContent]:
-    """Search static documents (PDFs) using semantic search."""
-    from pathlib import Path
-
-    adapter = get_chroma_adapter()
-
-    try:
-        results = await adapter.search("static_documents", query, limit * 2)  # Fetch extra for filtering
-
-        if not results:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"No static documents found matching: {query}\n\n"
-                    "Note: Documents must be ingested first. Set GIRAF_DOCUMENTS_DIR environment variable.",
-                )
-            ]
-
-        # Filter by tags if provided
-        if tags:
-            results = [
-                r for r in results
-                if r.metadata.tags and any(t in r.metadata.tags for t in tags)
-            ]
-
-        # Limit results after filtering
-        results = results[:limit]
-
-        if not results:
-            return [
-                TextContent(
-                    type="text",
-                    text=f"No documents found matching tags: {tags}\n\n"
-                    "Try removing tag filters or use `list_static_documents` to see available tags.",
-                )
-            ]
-
-        lines = [f"# Static Document Search: {query}\n"]
-        if tags:
-            lines.append(f"*Filtered by tags: {', '.join(tags)}*\n")
-
-        for result in results:
-            # Extract filename from URL/path
-            title = result.metadata.title or Path(result.metadata.url).name
-            page = result.metadata.page
-
-            if page:
-                lines.append(f"## {title} (Page {page})")
-            else:
-                lines.append(f"## {title}")
-
-            lines.append(f"**Source:** {result.metadata.url}")
-
-            if result.metadata.tags:
-                lines.append(f"**Tags:** {', '.join(result.metadata.tags)}")
-
-            lines.append(f"**Relevance:** {result.score:.2%}")
-            lines.append("")
-
-            # Show content snippet
-            snippet = result.content[:500] + "..." if len(result.content) > 500 else result.content
-            lines.append(snippet)
-            lines.append("")
-            lines.append("---")
-            lines.append("")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching static documents: {e}")]
-
-
-async def handle_list_static_documents() -> list[TextContent]:
-    """List all ingested static documents."""
-    from collections import defaultdict
-
-    adapter = get_chroma_adapter()
-
-    try:
-        # Get count first
-        count = await adapter.count("static_documents")
-
-        if count == 0:
-            return [
-                TextContent(
-                    type="text",
-                    text="No static documents have been ingested.\n\n"
-                    "To ingest documents:\n"
-                    "1. Set GIRAF_DOCUMENTS_DIR environment variable\n"
-                    "2. Add PDF files to that directory\n"
-                    "3. Restart the server (auto-ingest on startup)",
-                )
-            ]
-
-        # Search with empty query to get all documents
-        results = await adapter.search("static_documents", " ", limit=100)
-
-        # Group by file
-        by_file: dict[str, dict] = defaultdict(lambda: {"pages": [], "tags": []})
-        for result in results:
-            if result.id.startswith("_"):  # Skip internal documents
-                continue
-
-            url = result.metadata.url
-            by_file[url]["pages"].append(result.metadata.page)
-            if result.metadata.tags:
-                by_file[url]["tags"] = result.metadata.tags
-
-        lines = [f"# Static Documents ({count} chunks from {len(by_file)} files)\n"]
-
-        # Collect all tags
-        all_tags: set[str] = set()
-        for info in by_file.values():
-            all_tags.update(info["tags"])
-
-        if all_tags:
-            lines.append(f"**Available tags:** {', '.join(sorted(all_tags))}\n")
-
-        for url, info in sorted(by_file.items()):
-            from pathlib import Path
-            filename = Path(url).name
-            page_count = len(set(info["pages"]))
-            tags_str = f" [{', '.join(info['tags'])}]" if info["tags"] else ""
-
-            lines.append(f"- **{filename}**{tags_str} - {page_count} pages")
-
-        lines.append("")
-        lines.append("---")
-        lines.append("Use `search_static_documents` to search within these documents.")
-
-        return [TextContent(type="text", text="\n".join(lines))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error listing static documents: {e}")]
 
 
 # === Startup Initialization ===
@@ -975,7 +419,7 @@ async def initialize_static_documents() -> None:
 # === Entry Point ===
 
 
-async def run_stdio_server():
+async def run_stdio_server() -> None:
     """Run the MCP server with stdio transport (for Claude Desktop)."""
     await initialize_static_documents()
 
@@ -987,7 +431,7 @@ async def run_stdio_server():
         )
 
 
-def run_http_server(host: str = "0.0.0.0", port: int = 8000):
+def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
     """Run the MCP server with HTTP/SSE transport (for remote access).
 
     Args:
@@ -996,7 +440,7 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000):
     """
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
-    from starlette.routing import Mount, Route
+    from starlette.routing import Route
     from starlette.responses import JSONResponse
     import uvicorn
     import logging
@@ -1006,7 +450,7 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000):
     # Create SSE transport
     sse = SseServerTransport("/messages/")
 
-    async def handle_sse(request):
+    async def handle_sse(request: Any) -> None:
         """Handle SSE connection."""
         async with sse.connect_sse(
             request.scope, request.receive, request._send
@@ -1017,16 +461,17 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000):
                 server.create_initialization_options(),
             )
 
-    async def handle_messages(request):
+    async def handle_messages(request: Any) -> None:
         """Handle incoming messages."""
         await sse.handle_post_message(request.scope, request.receive, request._send)
 
-    async def health_check(request):
+    async def health_check(request: Any) -> JSONResponse:
         """Health check endpoint."""
         return JSONResponse({"status": "ok", "server": "giraf-mcp"})
 
-    async def lifespan(app):
+    async def lifespan(app: Any) -> AsyncGenerator[None, None]:
         """Lifespan handler for startup/shutdown."""
+
         # Startup
         logger.info(f"Starting GIRAF MCP server on http://{host}:{port}")
         logger.info(f"SSE endpoint: http://{host}:{port}/sse")
@@ -1044,14 +489,14 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000):
             Route("/sse", handle_sse),
             Route("/messages/", handle_messages, methods=["POST"]),
         ],
-        lifespan=lifespan,
+        lifespan=lifespan,  # type: ignore
     )
 
     # Run with uvicorn
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
-def main():
+def main() -> None:
     """Entry point for the MCP server.
 
     Usage:

@@ -9,7 +9,6 @@ import os
 
 import httpx
 
-import re
 
 from girafmcp.core import (
     CodeSearchResult,

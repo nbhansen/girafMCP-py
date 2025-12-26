@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore
 
 
 @dataclass
@@ -83,7 +83,10 @@ class FileAdapter:
             Persona dictionary or None if not found
         """
         personas = self.get_personas()
-        return personas.get("personas", {}).get(persona_id)
+        persona = personas.get("personas", {}).get(persona_id)
+        if persona is None:
+            return None
+        return dict(persona)
 
     def list_domain_files(self) -> list[Path]:
         """List all domain knowledge files.

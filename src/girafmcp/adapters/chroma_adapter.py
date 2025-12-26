@@ -6,7 +6,7 @@ mode for testing and persistent mode for production.
 """
 
 from dataclasses import asdict
-from typing import Any
+from typing import Any, cast
 
 import chromadb
 from chromadb.config import Settings
@@ -76,7 +76,7 @@ class ChromaAdapter(VectorStorePort):
                     SearchResult(
                         id=doc_id,
                         content=content,
-                        metadata=self._deserialize_metadata(metadata_dict),
+                        metadata=self._deserialize_metadata(cast(dict[str, Any], metadata_dict)),
                         score=score,
                     )
                 )
@@ -119,7 +119,7 @@ class ChromaAdapter(VectorStorePort):
                 id=result["ids"][0],
                 content=result["documents"][0] if result["documents"] else "",
                 metadata=self._deserialize_metadata(
-                    result["metadatas"][0] if result["metadatas"] else {}
+                    cast(dict[str, Any], result["metadatas"][0] if result["metadatas"] else {})
                 ),
             )
 
@@ -178,7 +178,7 @@ class ChromaAdapter(VectorStorePort):
             tags = data["tags"].split(",")
 
         return DocumentMetadata(
-            source=data.get("source", "wiki"),  # type: ignore
+            source=data.get("source", "wiki"),
             url=data.get("url", ""),
             title=data.get("title"),
             section=data.get("section"),
