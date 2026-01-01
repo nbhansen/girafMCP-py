@@ -1,0 +1,139 @@
+# Guardrails configuration for scaffolded AI responses
+#
+# Implements tiered response system to build student skills rather than dependency.
+# During onboarding (weeks 1-3), prompts reflection before providing direct solutions.
+#
+# Modes:
+# - off: Standard behavior, no guardrails (control group, post-onboarding)
+# - prompt: Ask "What have you tried?" before answering
+# - tiered: Provide hints in escalating detail (hint -> guidance -> example -> solution)
+# - cooldown: Add reflection delay before full solutions
+
+enabled: true
+mode: "tiered"  # off | prompt | tiered | cooldown
+
+# Team-specific overrides for A/B testing
+# These take precedence over the global mode setting
+team_overrides:
+  # Example configurations - uncomment and modify as needed:
+  # team_a:
+  #   enabled: true
+  #   mode: "tiered"
+  # team_b:
+  #   enabled: false
+  #   mode: "off"
+  # team_c:
+  #   enabled: true
+  #   mode: "cooldown"
+
+# Tools that trigger guardrails (require scaffolded responses)
+guarded_tools:
+  - search_code
+  - get_file
+  - search_documentation
+  - search_wiki
+  - search_domain_knowledge
+
+# Tools exempt from guardrails (always direct answers)
+# These are informational/navigational tools that don't benefit from scaffolding
+exempt_tools:
+  - list_repositories
+  - list_wiki_pages
+  - list_domain_topics
+  - list_personas
+  - list_static_documents
+  - get_project_context
+  - get_permalink
+  - get_persona
+  - set_session_metadata
+  - export_query_logs
+  - request_more_detail
+  - configure_guardrails
+
+# Tiered response configuration
+# Each tier provides increasing detail
+tiers:
+  1:
+    name: "hint"
+    description: "Conceptual hint without code"
+    prompt_suffix: |
+      ---
+      **[Scaffolded Response - Tier 1: Hint]**
+
+      I'll provide a conceptual hint to guide your exploration.
+
+      *To get more specific guidance, use the `request_more_detail` tool or ask a follow-up question.*
+
+  2:
+    name: "guidance"
+    description: "Specific guidance with locations"
+    prompt_suffix: |
+      ---
+      **[Scaffolded Response - Tier 2: Guidance]**
+
+      I'll provide specific guidance including relevant file paths and function names, but not implementation code yet.
+
+      *To see example code, use the `request_more_detail` tool.*
+
+  3:
+    name: "example"
+    description: "Partial code example"
+    prompt_suffix: |
+      ---
+      **[Scaffolded Response - Tier 3: Example]**
+
+      I'll provide a partial code example that demonstrates the pattern.
+
+      *For the complete implementation, use the `request_more_detail` tool.*
+
+  4:
+    name: "solution"
+    description: "Full solution"
+    prompt_suffix: null  # No modification, full response
+
+# Cooldown configuration (for cooldown mode)
+cooldown:
+  delay_seconds: 30
+  reflection_prompt: |
+    **Reflection Pause**
+
+    Before I provide a complete solution, take a moment to consider:
+
+    - What have you already tried?
+    - What specific part is confusing?
+    - Have you checked the existing codebase for similar patterns?
+
+    I'll provide the full answer in {remaining_seconds} seconds, or you can:
+    - Ask for a hint now (I'll respond immediately with a hint)
+    - Use `request_more_detail` to skip the wait
+
+# Attempt-first prompts (for prompt mode)
+attempt_first:
+  prompt: |
+    **Before I help with this...**
+
+    Could you share:
+    - What approaches have you considered?
+    - What have you tried so far?
+    - What specifically is blocking you?
+
+    This helps me give you more targeted assistance. Reply with what you've tried, or say "just help me" if you're completely stuck.
+
+  # Keywords that indicate student has already tried something
+  # If any of these are present, skip the prompt and provide direct help
+  bypass_indicators:
+    - "i tried"
+    - "i've tried"
+    - "i attempted"
+    - "doesn't work"
+    - "getting error"
+    - "tried but"
+    - "already checked"
+    - "i looked at"
+    - "i read"
+    - "i saw"
+    - "the error says"
+    - "error message"
+    - "stack trace"
+    - "just help me"
+    - "please help"
