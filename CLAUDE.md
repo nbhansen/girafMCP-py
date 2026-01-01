@@ -10,9 +10,9 @@ Spec: `RESEARCH_FEATURES_SPEC.md`
 | 1. Core Infrastructure | ✅ Done |
 | 2. Query Logging | ✅ Done |
 | 3. Guardrails System | ✅ Done |
-| 4. Knowledge Capture | ❌ Next |
-| 5. Resilience Testing | ❌ |
-| 6. Cross-Disciplinary | ❌ |
+| 4. Knowledge Capture | ✅ Done |
+| 5. Resilience Testing | ✅ Done |
+| 6. Cross-Disciplinary | ❌ Next |
 | 7. Integration & Docs | ⚠️ Partial |
 
 ## Quick Commands
