@@ -8,6 +8,15 @@ from girafmcp.core.services.guardrails_service import (
     GuardrailDecision,
     TierConfig,
 )
+from girafmcp.core.services.resilience_service import (
+    ResilienceService,
+    ResilienceConfig,
+    ResilienceMode,
+    InjectedError,
+    ErrorReport,
+    ErrorType,
+    ErrorDifficulty,
+)
 
 __all__ = [
     "IngestionService",
@@ -17,4 +26,11 @@ __all__ = [
     "GuardrailMode",
     "GuardrailDecision",
     "TierConfig",
+    "ResilienceService",
+    "ResilienceConfig",
+    "ResilienceMode",
+    "InjectedError",
+    "ErrorReport",
+    "ErrorType",
+    "ErrorDifficulty",
 ]

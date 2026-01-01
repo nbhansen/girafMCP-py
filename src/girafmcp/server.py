@@ -21,9 +21,10 @@ from mcp.types import TextContent, Tool  # noqa: E402
 
 from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter  # noqa: E402
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter  # noqa: E402
-from girafmcp.tools import context, github, search, research, knowledge  # noqa: E402
+from girafmcp.tools import context, github, search, research, knowledge, resilience  # noqa: E402
 from girafmcp.core.session import get_current_session  # noqa: E402
 from girafmcp.core.services.guardrails_service import GuardrailsService  # noqa: E402
+from girafmcp.core.services.resilience_service import ResilienceService  # noqa: E402
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -34,6 +35,7 @@ _chroma_adapter: ChromaAdapter | None = None
 _file_adapter: FileAdapter | None = None
 _guardrails_service: GuardrailsService | None = None
 _research_data_adapter: ResearchDataAdapter | None = None
+_resilience_service: ResilienceService | None = None
 
 
 def get_github_adapter() -> GitHubAdapter:
@@ -80,6 +82,14 @@ def get_research_data_adapter() -> ResearchDataAdapter:
         db_path = os.environ.get("GIRAF_KNOWLEDGE_DB", "data/knowledge.db")
         _research_data_adapter = ResearchDataAdapter(db_path)
     return _research_data_adapter
+
+
+def get_resilience_service() -> ResilienceService:
+    """Get or create resilience service."""
+    global _resilience_service
+    if _resilience_service is None:
+        _resilience_service = ResilienceService()
+    return _resilience_service
 
 
 # === Tool Definitions ===
@@ -578,6 +588,75 @@ async def list_tools() -> list[Tool]:
                 "required": ["package_id", "approved"],
             },
         ),
+        # === Resilience Testing Tools ===
+        Tool(
+            name="report_error_found",
+            description="Report a suspected error in AI-generated code or guidance. Use when you detect an issue that needs correction.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tool_name": {
+                        "type": "string",
+                        "description": "The tool where the error was found",
+                    },
+                    "error_description": {
+                        "type": "string",
+                        "description": "Description of the suspected error",
+                    },
+                    "proposed_fix": {
+                        "type": "string",
+                        "description": "Your proposed correction (optional)",
+                    },
+                },
+                "required": ["tool_name", "error_description"],
+            },
+        ),
+        Tool(
+            name="configure_resilience_test",
+            description="Configure resilience testing for a team. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Team to configure",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["normal", "degraded", "unavailable", "delayed"],
+                        "description": "Resilience test mode",
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Enable or disable resilience testing",
+                    },
+                },
+                "required": ["team_id"],
+            },
+        ),
+        Tool(
+            name="get_resilience_status",
+            description="Get current resilience testing status for the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_resilience_metrics",
+            description="Get error detection metrics for research analysis. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Optional: filter by session ID",
+                    },
+                },
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -766,6 +845,37 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             package_id=arguments["package_id"],
             approved=arguments["approved"],
             notes=arguments.get("notes"),
+        )
+
+    # === Resilience Testing Tool Handlers ===
+
+    elif name == "report_error_found":
+        return await resilience.handle_report_error_found(
+            service=get_resilience_service(),
+            session=get_current_session(),
+            tool_name=arguments["tool_name"],
+            error_description=arguments["error_description"],
+            proposed_fix=arguments.get("proposed_fix"),
+        )
+
+    elif name == "configure_resilience_test":
+        return await resilience.handle_configure_resilience_test(
+            service=get_resilience_service(),
+            team_id=arguments["team_id"],
+            mode=arguments.get("mode"),
+            enabled=arguments.get("enabled"),
+        )
+
+    elif name == "get_resilience_status":
+        return await resilience.handle_get_resilience_status(
+            service=get_resilience_service(),
+            session=get_current_session(),
+        )
+
+    elif name == "get_resilience_metrics":
+        return await resilience.handle_get_resilience_metrics(
+            service=get_resilience_service(),
+            session_id=arguments.get("session_id"),
         )
 
     else:

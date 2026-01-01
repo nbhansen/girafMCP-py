@@ -1,0 +1,87 @@
+# Resilience Testing Configuration
+#
+# Purpose: Test student ability to function when AI assistance is
+# unavailable or produces incorrect output. Enables research into
+# verification skills, debugging ability, and AI independence.
+#
+# WARNING: This feature should only be enabled during controlled
+# assessment periods with proper ethical oversight.
+
+enabled: false  # Enable only during assessment periods
+mode: "normal"  # Default mode: normal, degraded, unavailable, delayed
+
+# Team-specific test assignments for A/B testing
+team_assignments:
+  # Example configurations (customize per study design)
+  # team_control:
+  #   mode: "normal"
+  #   assessment_window: null
+  # team_treatment:
+  #   mode: "degraded"
+  #   assessment_window:
+  #     start: "2025-03-15T09:00:00Z"
+  #     end: "2025-03-15T12:00:00Z"
+
+# Degraded mode: intentional errors to inject
+degraded_mode:
+  error_injection_rate: 0.3  # 30% of responses contain errors
+
+  error_types:
+    - type: "off_by_one"
+      description: "Loop bounds off by one"
+      weight: 0.25
+
+    - type: "null_check_missing"
+      description: "Missing null/undefined check"
+      weight: 0.25
+
+    - type: "wrong_variable"
+      description: "Using wrong variable name"
+      weight: 0.20
+
+    - type: "logic_inversion"
+      description: "Inverted boolean condition"
+      weight: 0.15
+
+    - type: "api_misuse"
+      description: "Incorrect API usage pattern"
+      weight: 0.15
+
+  # How obvious errors should be
+  difficulty_distribution:
+    obvious: 0.2    # Easy to spot (20%)
+    moderate: 0.5   # Requires careful reading (50%)
+    subtle: 0.3     # Requires testing to detect (30%)
+
+# Unavailable mode configuration
+unavailable_mode:
+  message: |
+    The AI assistant is temporarily unavailable.
+    Please continue working using documentation,
+    existing code examples, and team discussion.
+
+    Available resources:
+    - Project documentation (search_documentation)
+    - Past architectural decisions (search_knowledge)
+    - Project context (get_project_context)
+
+  # Tools that remain available even in unavailable mode
+  allowed_tools:
+    - search_documentation
+    - search_knowledge
+    - get_project_context
+    - list_wiki_pages
+    - search_wiki
+
+# Delayed mode configuration
+delayed_mode:
+  delay_seconds: 60  # Minimum delay before response
+  message_during_delay: |
+    Processing your request... This may take a moment.
+    Consider what you might try while waiting.
+
+# Metrics and logging
+metrics:
+  log_all_attempts: true
+  track_workarounds: true  # Did student find alternative solution?
+  track_error_detection: true  # Did student notice injected errors?
