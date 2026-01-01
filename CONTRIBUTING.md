@@ -139,6 +139,74 @@ description: "Research papers on autism and visual supports"
 - Use descriptive filenames
 - PDFs are auto-ingested on server restart
 
+### 5. Updating Discipline Profiles
+
+Discipline profiles help adapt explanations for students from different backgrounds.
+
+**Location:** `data/discipline_profiles.yaml`
+
+**Structure:**
+
+```yaml
+disciplines:
+  id:  # Discipline identifier
+    name: "Interaction Design"
+    vocabulary_emphasis:
+      - "user experience"
+      - "accessibility"
+    explanation_style: "conceptual_visual"  # technical_precise, conceptual_visual, outcome_focused, clinical_context
+    default_code_depth: "high_level"  # detailed, moderate, high_level, overview
+    assumed_knowledge:
+      - "design thinking"
+      - "user research"
+    translation_hints:
+      "API": "The URL where our app talks to the server"
+      "callback": "Code that runs when something happens"
+
+concept_translations:
+  "dependency injection":
+    cs: "A design pattern for loose coupling"
+    id: "The app gets its tools handed to it"
+    business: "Components are interchangeable"
+```
+
+**Guidelines:**
+- Keep translation hints accessible to the target discipline
+- Add common terms students struggle with
+- Include practical analogies where possible
+
+### 6. Working with Research Features
+
+The MCP server includes experimental research features for studying AI-assisted learning. These are disabled by default.
+
+**Enabling features:**
+
+```bash
+# In .env file
+GIRAF_GUARDRAILS_ENABLED=true    # Scaffolding prompts for learning
+GIRAF_RESILIENCE_ENABLED=true    # Error injection for assessment
+GIRAF_DISCIPLINE_ENABLED=true    # Cross-disciplinary adaptation
+```
+
+**Updating guardrails** (`data/guardrails.yaml`):
+
+```yaml
+triggers:
+  - pattern: "how do I.*database"
+    severity: "moderate"
+    prompt: "Before writing database code, what security considerations should you think about?"
+```
+
+**Updating resilience tests** (`data/resilience_tests.yaml`):
+
+```yaml
+scenarios:
+  - name: "missing_import"
+    description: "Omit an import statement"
+    detection_hint: "ImportError or undefined name"
+    difficulty: "easy"
+```
+
 ## Code Contributions
 
 ### Setup
@@ -236,15 +304,31 @@ async def handle_my_new_tool(param1: str) -> list[TextContent]:
 
 ### Architecture
 
-The project follows hexagonal architecture:
+The project follows hexagonal architecture with middleware:
 
 ```
 ┌─────────────────────────────────┐
-│      MCP Server (server.py)     │  Tool definitions
+│      MCP Server (server.py)     │  Tool definitions (36 tools)
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│       Tool Handlers             │  Business logic
+│      Middleware (middleware/)   │  Request/response processing
+│   - DisciplineMiddleware        │  Cross-disciplinary adaptation
+│   - GuardrailsMiddleware        │  Learning scaffolds
+└──────────────┬──────────────────┘
+               │
+┌──────────────▼──────────────────┐
+│     Tool Handlers (tools/)      │  Business logic by category
+│   - search, github, context     │
+│   - knowledge, resilience       │
+│   - discipline, guardrails      │
+└──────────────┬──────────────────┘
+               │
+┌──────────────▼──────────────────┐
+│    Services (core/services/)    │  Domain logic
+│   - GuardrailsService           │
+│   - ResilienceService           │
+│   - MultiFrameService           │
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
@@ -257,6 +341,7 @@ The project follows hexagonal architecture:
 │   - ChromaAdapter               │
 │   - FileAdapter                 │
 │   - PDFAdapter                  │
+│   - KnowledgeStoreAdapter       │
 └─────────────────────────────────┘
 ```
 

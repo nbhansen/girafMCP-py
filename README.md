@@ -58,6 +58,11 @@ GITHUB_TOKEN=ghp_...
 
 # Optional: Directory containing PDFs for semantic search
 GIRAF_DOCUMENTS_DIR=/path/to/documents
+
+# Research features (all disabled by default)
+GIRAF_GUARDRAILS_ENABLED=false
+GIRAF_RESILIENCE_ENABLED=false
+GIRAF_DISCIPLINE_ENABLED=false
 ```
 
 ### Run the Server
@@ -126,6 +131,52 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 | `list_personas` | List available user personas |
 | `get_persona` | Get persona details for tailored responses |
 
+### Research Features
+
+> **Note:** These features support pedagogical research on AI-assisted learning. They are disabled by default and require environment variable configuration to enable.
+
+#### Session & Logging
+| Tool | Description |
+|------|-------------|
+| `set_session_metadata` | Set user discipline, expertise level, and consent for analytics |
+
+#### Guardrails System
+| Tool | Description |
+|------|-------------|
+| `request_more_detail` | Request AI to provide more detailed explanation |
+| `configure_guardrails` | Adjust guardrail sensitivity for current session |
+| `get_guardrails_status` | View current guardrail configuration |
+| `get_feature_status` | Check which research features are enabled |
+
+#### Knowledge Capture
+| Tool | Description |
+|------|-------------|
+| `capture_decision` | Record architectural decisions with rationale |
+| `capture_lesson` | Document lessons learned during development |
+| `search_knowledge` | Search captured decisions and lessons |
+| `list_decisions` | List all recorded decisions |
+| `list_learnings` | List all recorded lessons learned |
+| `generate_handover_summary` | Auto-generate end-of-semester handover |
+| `get_handover` | Retrieve a specific handover document |
+| `review_handover` | Mark handover sections as reviewed |
+
+#### Resilience Testing
+| Tool | Description |
+|------|-------------|
+| `report_error_found` | Report that an injected error was discovered |
+| `configure_resilience_test` | Configure error injection for assessment |
+| `get_resilience_status` | Check current resilience test configuration |
+| `get_resilience_metrics` | View resilience testing metrics |
+
+#### Cross-Disciplinary Framing
+| Tool | Description |
+|------|-------------|
+| `explain_for_discipline` | Re-explain concepts for a specific discipline |
+| `compare_perspectives` | Show how different disciplines approach a topic |
+| `translate_term` | Translate technical terms for non-CS backgrounds |
+| `get_discipline_profile` | Get details about a discipline's learning profile |
+| `list_disciplines` | List all available discipline profiles |
+
 ## Static Document Search
 
 Point `GIRAF_DOCUMENTS_DIR` to a folder with PDFs. The server auto-ingests them on startup.
@@ -148,7 +199,7 @@ tags: ["handover", "semester", "documentation"]
 ## Development
 
 ```bash
-# Run tests (57 passing)
+# Run tests (249 tests)
 pytest
 
 # With coverage
@@ -165,11 +216,17 @@ ruff check src/
 girafMCP-py/
 ├── src/girafmcp/
 │   ├── core/              # Ports, types, services
-│   ├── adapters/          # GitHub, ChromaDB, PDF adapters
-│   └── server.py          # MCP server (14 tools)
+│   │   └── services/      # Guardrails, resilience, multiframe services
+│   ├── adapters/          # GitHub, ChromaDB, PDF, knowledge adapters
+│   ├── middleware/        # Request/response middleware
+│   ├── tools/             # Tool handlers by category
+│   └── server.py          # MCP server (36 tools)
 ├── data/
 │   ├── context.yaml       # Project context
 │   ├── personas.yaml      # User personas
+│   ├── guardrails.yaml    # Guardrails configuration
+│   ├── resilience_tests.yaml  # Error injection config
+│   ├── discipline_profiles.yaml  # Cross-disciplinary framing
 │   └── domain/            # Domain knowledge
 └── tests/
 ```
