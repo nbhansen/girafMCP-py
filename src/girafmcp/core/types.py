@@ -195,3 +195,108 @@ class QueryLog:
     # Guardrail state at time of query
     guardrail_mode: str | None = None  # off, prompt, tiered, cooldown
     guardrail_tier: int | None = None
+
+
+# =============================================================================
+# Knowledge Capture Types (Phase 4)
+# =============================================================================
+
+
+class DecisionStatus(str, Enum):
+    """Status of an architectural decision."""
+
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    DEPRECATED = "deprecated"
+    SUPERSEDED = "superseded"
+
+
+class LearningCategory(str, Enum):
+    """Category of retrospective learning."""
+
+    WENT_WELL = "went_well"
+    TO_IMPROVE = "to_improve"
+    ACTION_ITEM = "action_item"
+    INSIGHT = "insight"
+
+
+class FollowUpStatus(str, Enum):
+    """Status of action item follow-up."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    WONT_DO = "wont_do"
+
+
+@dataclass
+class ArchitecturalDecision:
+    """Record of an architectural or technical decision (ADR).
+
+    Used for capturing design decisions for future reference and handover.
+    """
+
+    id: str  # UUID
+    timestamp: datetime  # When the decision was recorded
+    team_id: str | None = None
+
+    # Decision content
+    title: str = ""  # Brief description
+    context: str = ""  # Why this decision was needed
+    decision: str = ""  # What was decided
+    rationale: str = ""  # Why this option was chosen
+    alternatives: list[str] = field(default_factory=list)  # Other options considered
+    consequences: list[str] = field(default_factory=list)  # Expected impacts
+
+    # Metadata
+    status: DecisionStatus = DecisionStatus.ACCEPTED
+    related_issues: list[str] = field(default_factory=list)  # GitHub issue numbers
+    related_files: list[str] = field(default_factory=list)  # File paths affected
+    tags: list[str] = field(default_factory=list)  # Categorization
+
+    # Optional discipline-specific notes
+    discipline_notes: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class RetrospectiveLearning:
+    """Insight captured from a sprint retrospective.
+
+    Used for recording learnings to preserve institutional knowledge.
+    """
+
+    id: str  # UUID
+    timestamp: datetime  # When the learning was recorded
+    team_id: str | None = None
+    sprint: str = ""  # e.g., "2025s1-sprint3"
+
+    # Learning content
+    category: LearningCategory = LearningCategory.INSIGHT
+    description: str = ""
+
+    # Context
+    related_decisions: list[str] = field(default_factory=list)  # ArchitecturalDecision IDs
+    follow_up_status: FollowUpStatus | None = None
+
+
+@dataclass
+class HandoverPackage:
+    """Generated handover documentation for next semester.
+
+    Aggregates decisions and learnings into a comprehensive handover package.
+    """
+
+    id: str  # UUID
+    generated_at: datetime
+    semester: str  # e.g., "2025s1"
+
+    # Content sections
+    executive_summary: str = ""
+    key_decisions: list[str] = field(default_factory=list)  # ArchitecturalDecision IDs
+    lessons_learned: list[str] = field(default_factory=list)  # RetrospectiveLearning IDs
+    known_issues: list[str] = field(default_factory=list)
+    recommended_priorities: list[str] = field(default_factory=list)
+
+    # Quality metadata
+    human_reviewed: bool = False
+    reviewer_notes: str | None = None

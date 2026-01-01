@@ -12,7 +12,17 @@ from typing import Any
 
 import aiosqlite
 
-from girafmcp.core.types import MetaSkillIndicators, QueryLog, QueryType
+from girafmcp.core.types import (
+    ArchitecturalDecision,
+    DecisionStatus,
+    FollowUpStatus,
+    HandoverPackage,
+    LearningCategory,
+    MetaSkillIndicators,
+    QueryLog,
+    QueryType,
+    RetrospectiveLearning,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +67,60 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sess_team ON sessions(team_id);
+
+-- Knowledge Capture: Architectural Decisions (ADRs)
+CREATE TABLE IF NOT EXISTS architectural_decisions (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    team_id TEXT,
+    title TEXT NOT NULL,
+    context TEXT NOT NULL,
+    decision TEXT NOT NULL,
+    rationale TEXT NOT NULL,
+    alternatives TEXT,
+    consequences TEXT,
+    status TEXT NOT NULL DEFAULT 'accepted',
+    related_issues TEXT,
+    related_files TEXT,
+    tags TEXT,
+    discipline_notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ad_status ON architectural_decisions(status);
+CREATE INDEX IF NOT EXISTS idx_ad_timestamp ON architectural_decisions(timestamp);
+CREATE INDEX IF NOT EXISTS idx_ad_team ON architectural_decisions(team_id);
+
+-- Knowledge Capture: Retrospective Learnings
+CREATE TABLE IF NOT EXISTS retrospective_learnings (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    team_id TEXT,
+    sprint TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    related_decisions TEXT,
+    follow_up_status TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_rl_sprint ON retrospective_learnings(sprint);
+CREATE INDEX IF NOT EXISTS idx_rl_category ON retrospective_learnings(category);
+CREATE INDEX IF NOT EXISTS idx_rl_team ON retrospective_learnings(team_id);
+
+-- Knowledge Capture: Handover Packages
+CREATE TABLE IF NOT EXISTS handover_packages (
+    id TEXT PRIMARY KEY,
+    generated_at TEXT NOT NULL,
+    semester TEXT NOT NULL UNIQUE,
+    executive_summary TEXT NOT NULL,
+    key_decisions TEXT,
+    lessons_learned TEXT,
+    known_issues TEXT,
+    recommended_priorities TEXT,
+    human_reviewed INTEGER DEFAULT 0,
+    reviewer_notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_hp_semester ON handover_packages(semester);
 """
 
 
@@ -434,3 +498,505 @@ class ResearchDataAdapter:
                 (_utcnow().isoformat(), session_id),
             )
             await db.commit()
+
+    # =========================================================================
+    # Knowledge Capture: Architectural Decisions
+    # =========================================================================
+
+    async def save_decision(self, decision: ArchitecturalDecision) -> None:
+        """Save an architectural decision.
+
+        Args:
+            decision: The decision record to save
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO architectural_decisions (
+                    id, timestamp, team_id, title, context, decision, rationale,
+                    alternatives, consequences, status, related_issues,
+                    related_files, tags, discipline_notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision.id,
+                    decision.timestamp.isoformat(),
+                    decision.team_id,
+                    decision.title,
+                    decision.context,
+                    decision.decision,
+                    decision.rationale,
+                    json.dumps(decision.alternatives),
+                    json.dumps(decision.consequences),
+                    decision.status.value,
+                    json.dumps(decision.related_issues),
+                    json.dumps(decision.related_files),
+                    json.dumps(decision.tags),
+                    json.dumps(decision.discipline_notes),
+                ),
+            )
+            await db.commit()
+
+    async def get_decision(self, decision_id: str) -> ArchitecturalDecision | None:
+        """Get an architectural decision by ID.
+
+        Args:
+            decision_id: The decision UUID
+
+        Returns:
+            The decision record or None if not found
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM architectural_decisions WHERE id = ?",
+                (decision_id,),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return self._row_to_decision(row)
+            return None
+
+    async def list_decisions(
+        self,
+        status: DecisionStatus | None = None,
+        tags: list[str] | None = None,
+        team_id: str | None = None,
+        since: datetime | None = None,
+        limit: int = 50,
+    ) -> list[ArchitecturalDecision]:
+        """List architectural decisions with optional filters.
+
+        Args:
+            status: Filter by status
+            tags: Filter by tags (any match)
+            team_id: Filter by team
+            since: Only decisions after this time
+            limit: Maximum number of results
+
+        Returns:
+            List of matching decisions
+        """
+        await self._ensure_initialized()
+
+        query = "SELECT * FROM architectural_decisions WHERE 1=1"
+        params: list[Any] = []
+
+        if status:
+            query += " AND status = ?"
+            params.append(status.value)
+        if team_id:
+            query += " AND team_id = ?"
+            params.append(team_id)
+        if since:
+            query += " AND timestamp >= ?"
+            params.append(since.isoformat())
+
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            decisions = [self._row_to_decision(row) for row in rows]
+
+            # Filter by tags if specified (post-query since tags are JSON)
+            if tags:
+                decisions = [
+                    d for d in decisions
+                    if any(tag in d.tags for tag in tags)
+                ]
+
+            return decisions
+
+    async def search_decisions(self, query: str, limit: int = 5) -> list[ArchitecturalDecision]:
+        """Search decisions by text content.
+
+        Simple text search across title, context, decision, rationale.
+
+        Args:
+            query: Search query
+            limit: Maximum results
+
+        Returns:
+            List of matching decisions
+        """
+        await self._ensure_initialized()
+
+        # Simple LIKE search (for semantic search, use ChromaDB integration)
+        search_pattern = f"%{query}%"
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT * FROM architectural_decisions
+                WHERE title LIKE ? OR context LIKE ? OR decision LIKE ? OR rationale LIKE ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (search_pattern, search_pattern, search_pattern, search_pattern, limit),
+            )
+            rows = await cursor.fetchall()
+            return [self._row_to_decision(row) for row in rows]
+
+    def _row_to_decision(self, row: aiosqlite.Row) -> ArchitecturalDecision:
+        """Convert a database row to an ArchitecturalDecision."""
+        return ArchitecturalDecision(
+            id=row["id"],
+            timestamp=datetime.fromisoformat(row["timestamp"]),
+            team_id=row["team_id"],
+            title=row["title"],
+            context=row["context"],
+            decision=row["decision"],
+            rationale=row["rationale"],
+            alternatives=json.loads(row["alternatives"]) if row["alternatives"] else [],
+            consequences=json.loads(row["consequences"]) if row["consequences"] else [],
+            status=DecisionStatus(row["status"]),
+            related_issues=json.loads(row["related_issues"]) if row["related_issues"] else [],
+            related_files=json.loads(row["related_files"]) if row["related_files"] else [],
+            tags=json.loads(row["tags"]) if row["tags"] else [],
+            discipline_notes=json.loads(row["discipline_notes"]) if row["discipline_notes"] else {},
+        )
+
+    # =========================================================================
+    # Knowledge Capture: Retrospective Learnings
+    # =========================================================================
+
+    async def save_learning(self, learning: RetrospectiveLearning) -> None:
+        """Save a retrospective learning.
+
+        Args:
+            learning: The learning record to save
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO retrospective_learnings (
+                    id, timestamp, team_id, sprint, category, description,
+                    related_decisions, follow_up_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    learning.id,
+                    learning.timestamp.isoformat(),
+                    learning.team_id,
+                    learning.sprint,
+                    learning.category.value,
+                    learning.description,
+                    json.dumps(learning.related_decisions),
+                    learning.follow_up_status.value if learning.follow_up_status else None,
+                ),
+            )
+            await db.commit()
+
+    async def get_learning(self, learning_id: str) -> RetrospectiveLearning | None:
+        """Get a retrospective learning by ID.
+
+        Args:
+            learning_id: The learning UUID
+
+        Returns:
+            The learning record or None if not found
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM retrospective_learnings WHERE id = ?",
+                (learning_id,),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return self._row_to_learning(row)
+            return None
+
+    async def get_learnings_by_sprint(self, sprint: str) -> list[RetrospectiveLearning]:
+        """Get all learnings for a sprint.
+
+        Args:
+            sprint: Sprint identifier (e.g., "2025s1-sprint3")
+
+        Returns:
+            List of learnings for the sprint
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM retrospective_learnings WHERE sprint = ? ORDER BY timestamp ASC",
+                (sprint,),
+            )
+            rows = await cursor.fetchall()
+            return [self._row_to_learning(row) for row in rows]
+
+    async def get_learnings_by_category(
+        self,
+        category: LearningCategory,
+        team_id: str | None = None,
+        since: datetime | None = None,
+        limit: int = 50,
+    ) -> list[RetrospectiveLearning]:
+        """Get learnings filtered by category.
+
+        Args:
+            category: Learning category
+            team_id: Optional team filter
+            since: Optional time filter
+            limit: Maximum results
+
+        Returns:
+            List of matching learnings
+        """
+        await self._ensure_initialized()
+
+        query = "SELECT * FROM retrospective_learnings WHERE category = ?"
+        params: list[Any] = [category.value]
+
+        if team_id:
+            query += " AND team_id = ?"
+            params.append(team_id)
+        if since:
+            query += " AND timestamp >= ?"
+            params.append(since.isoformat())
+
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            return [self._row_to_learning(row) for row in rows]
+
+    async def list_learnings(
+        self,
+        team_id: str | None = None,
+        since: datetime | None = None,
+        limit: int = 50,
+    ) -> list[RetrospectiveLearning]:
+        """List all retrospective learnings.
+
+        Args:
+            team_id: Optional team filter
+            since: Optional time filter
+            limit: Maximum results
+
+        Returns:
+            List of learnings
+        """
+        await self._ensure_initialized()
+
+        query = "SELECT * FROM retrospective_learnings WHERE 1=1"
+        params: list[Any] = []
+
+        if team_id:
+            query += " AND team_id = ?"
+            params.append(team_id)
+        if since:
+            query += " AND timestamp >= ?"
+            params.append(since.isoformat())
+
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(query, params)
+            rows = await cursor.fetchall()
+            return [self._row_to_learning(row) for row in rows]
+
+    async def search_learnings(self, query: str, limit: int = 5) -> list[RetrospectiveLearning]:
+        """Search learnings by text content.
+
+        Args:
+            query: Search query
+            limit: Maximum results
+
+        Returns:
+            List of matching learnings
+        """
+        await self._ensure_initialized()
+
+        search_pattern = f"%{query}%"
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                """
+                SELECT * FROM retrospective_learnings
+                WHERE description LIKE ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (search_pattern, limit),
+            )
+            rows = await cursor.fetchall()
+            return [self._row_to_learning(row) for row in rows]
+
+    def _row_to_learning(self, row: aiosqlite.Row) -> RetrospectiveLearning:
+        """Convert a database row to a RetrospectiveLearning."""
+        follow_up = None
+        if row["follow_up_status"]:
+            follow_up = FollowUpStatus(row["follow_up_status"])
+
+        return RetrospectiveLearning(
+            id=row["id"],
+            timestamp=datetime.fromisoformat(row["timestamp"]),
+            team_id=row["team_id"],
+            sprint=row["sprint"],
+            category=LearningCategory(row["category"]),
+            description=row["description"],
+            related_decisions=json.loads(row["related_decisions"]) if row["related_decisions"] else [],
+            follow_up_status=follow_up,
+        )
+
+    # =========================================================================
+    # Knowledge Capture: Handover Packages
+    # =========================================================================
+
+    async def save_handover(self, package: HandoverPackage) -> None:
+        """Save a handover package.
+
+        Args:
+            package: The handover package to save
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT OR REPLACE INTO handover_packages (
+                    id, generated_at, semester, executive_summary, key_decisions,
+                    lessons_learned, known_issues, recommended_priorities,
+                    human_reviewed, reviewer_notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    package.id,
+                    package.generated_at.isoformat(),
+                    package.semester,
+                    package.executive_summary,
+                    json.dumps(package.key_decisions),
+                    json.dumps(package.lessons_learned),
+                    json.dumps(package.known_issues),
+                    json.dumps(package.recommended_priorities),
+                    1 if package.human_reviewed else 0,
+                    package.reviewer_notes,
+                ),
+            )
+            await db.commit()
+
+    async def get_handover(self, semester: str) -> HandoverPackage | None:
+        """Get handover package for a semester.
+
+        Args:
+            semester: Semester identifier (e.g., "2025s1")
+
+        Returns:
+            The handover package or None if not found
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM handover_packages WHERE semester = ?",
+                (semester,),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return self._row_to_handover(row)
+            return None
+
+    async def get_handover_by_id(self, package_id: str) -> HandoverPackage | None:
+        """Get handover package by ID.
+
+        Args:
+            package_id: Package UUID
+
+        Returns:
+            The handover package or None if not found
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM handover_packages WHERE id = ?",
+                (package_id,),
+            )
+            row = await cursor.fetchone()
+            if row:
+                return self._row_to_handover(row)
+            return None
+
+    async def list_handovers(self) -> list[HandoverPackage]:
+        """List all handover packages.
+
+        Returns:
+            List of all handover packages
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM handover_packages ORDER BY generated_at DESC"
+            )
+            rows = await cursor.fetchall()
+            return [self._row_to_handover(row) for row in rows]
+
+    async def mark_handover_reviewed(
+        self,
+        package_id: str,
+        approved: bool,
+        notes: str | None = None,
+    ) -> bool:
+        """Mark a handover package as reviewed.
+
+        Args:
+            package_id: Package UUID
+            approved: Whether the package was approved
+            notes: Optional reviewer notes
+
+        Returns:
+            True if package was found and updated, False otherwise
+        """
+        await self._ensure_initialized()
+
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                UPDATE handover_packages
+                SET human_reviewed = ?, reviewer_notes = ?
+                WHERE id = ?
+                """,
+                (1 if approved else 0, notes, package_id),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
+    def _row_to_handover(self, row: aiosqlite.Row) -> HandoverPackage:
+        """Convert a database row to a HandoverPackage."""
+        return HandoverPackage(
+            id=row["id"],
+            generated_at=datetime.fromisoformat(row["generated_at"]),
+            semester=row["semester"],
+            executive_summary=row["executive_summary"],
+            key_decisions=json.loads(row["key_decisions"]) if row["key_decisions"] else [],
+            lessons_learned=json.loads(row["lessons_learned"]) if row["lessons_learned"] else [],
+            known_issues=json.loads(row["known_issues"]) if row["known_issues"] else [],
+            recommended_priorities=json.loads(row["recommended_priorities"]) if row["recommended_priorities"] else [],
+            human_reviewed=bool(row["human_reviewed"]),
+            reviewer_notes=row["reviewer_notes"],
+        )

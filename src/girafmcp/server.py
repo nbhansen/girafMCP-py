@@ -20,7 +20,8 @@ from mcp.server.stdio import stdio_server  # noqa: E402
 from mcp.types import TextContent, Tool  # noqa: E402
 
 from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter  # noqa: E402
-from girafmcp.tools import context, github, search, research  # noqa: E402
+from girafmcp.adapters.research_data_adapter import ResearchDataAdapter  # noqa: E402
+from girafmcp.tools import context, github, search, research, knowledge  # noqa: E402
 from girafmcp.core.session import get_current_session  # noqa: E402
 from girafmcp.core.services.guardrails_service import GuardrailsService  # noqa: E402
 
@@ -32,6 +33,7 @@ _github_adapter: GitHubAdapter | None = None
 _chroma_adapter: ChromaAdapter | None = None
 _file_adapter: FileAdapter | None = None
 _guardrails_service: GuardrailsService | None = None
+_research_data_adapter: ResearchDataAdapter | None = None
 
 
 def get_github_adapter() -> GitHubAdapter:
@@ -69,6 +71,15 @@ def get_guardrails_service() -> GuardrailsService:
     if _guardrails_service is None:
         _guardrails_service = GuardrailsService()
     return _guardrails_service
+
+
+def get_research_data_adapter() -> ResearchDataAdapter:
+    """Get or create research data adapter."""
+    global _research_data_adapter
+    if _research_data_adapter is None:
+        db_path = os.environ.get("GIRAF_KNOWLEDGE_DB", "data/knowledge.db")
+        _research_data_adapter = ResearchDataAdapter(db_path)
+    return _research_data_adapter
 
 
 # === Tool Definitions ===
@@ -368,6 +379,205 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        # === Knowledge Capture Tools ===
+        Tool(
+            name="capture_decision",
+            description="Record an architectural or technical decision (ADR). Creates an ADR for future reference and handover.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Brief title for the decision (e.g., 'Use PostgreSQL for Foodplanner')",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Why was this decision needed? What problem does it solve?",
+                    },
+                    "decision": {
+                        "type": "string",
+                        "description": "What was decided?",
+                    },
+                    "rationale": {
+                        "type": "string",
+                        "description": "Why was this option chosen over alternatives?",
+                    },
+                    "alternatives": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Other options that were considered",
+                    },
+                    "consequences": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Expected impacts of this decision",
+                    },
+                    "related_issues": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Related GitHub issue numbers",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Categories (e.g., 'database', 'api', 'frontend')",
+                    },
+                },
+                "required": ["title", "context", "decision", "rationale"],
+            },
+        ),
+        Tool(
+            name="capture_lesson",
+            description="Record a learning or insight from a sprint retrospective.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "sprint": {
+                        "type": "string",
+                        "description": "Sprint identifier (e.g., '2025s1-sprint3')",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["went_well", "to_improve", "action_item", "insight"],
+                        "description": "Type of learning",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "The learning or insight",
+                    },
+                    "related_decisions": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "IDs of related architectural decisions",
+                    },
+                },
+                "required": ["sprint", "category", "description"],
+            },
+        ),
+        Tool(
+            name="search_knowledge",
+            description="Search captured decisions and learnings. Useful for finding relevant past decisions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query",
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["decisions", "learnings", "all"],
+                        "description": "What to search (default: all)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results (default: 5)",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_decisions",
+            description="List architectural decisions with optional filters.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["proposed", "accepted", "deprecated", "superseded"],
+                        "description": "Filter by status",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by tags",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results (default: 10)",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="list_learnings",
+            description="List retrospective learnings with optional filters.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "sprint": {
+                        "type": "string",
+                        "description": "Filter by sprint",
+                    },
+                    "category": {
+                        "type": "string",
+                        "enum": ["went_well", "to_improve", "action_item", "insight"],
+                        "description": "Filter by category",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results (default: 20)",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="generate_handover_summary",
+            description="Generate a handover package summarizing the semester's decisions, learnings, and recommendations.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "semester": {
+                        "type": "string",
+                        "description": "Semester identifier (e.g., '2025s1')",
+                    },
+                    "additional_notes": {
+                        "type": "string",
+                        "description": "Any additional notes to include in handover",
+                    },
+                },
+                "required": ["semester"],
+            },
+        ),
+        Tool(
+            name="get_handover",
+            description="Get an existing handover package for a semester.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "semester": {
+                        "type": "string",
+                        "description": "Semester identifier (e.g., '2025s1')",
+                    },
+                },
+                "required": ["semester"],
+            },
+        ),
+        Tool(
+            name="review_handover",
+            description="Mark a handover package as reviewed and add reviewer notes. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "package_id": {
+                        "type": "string",
+                        "description": "Handover package ID",
+                    },
+                    "approved": {
+                        "type": "boolean",
+                        "description": "Whether the package is approved",
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Reviewer notes and corrections",
+                    },
+                },
+                "required": ["package_id", "approved"],
+            },
+        ),
     ]
 
 
@@ -484,6 +694,79 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     elif name == "get_feature_status":
         return await research.handle_get_feature_status()
+
+    # === Knowledge Capture Tool Handlers ===
+
+    elif name == "capture_decision":
+        return await knowledge.handle_capture_decision(
+            adapter=get_research_data_adapter(),
+            session=get_current_session(),
+            title=arguments["title"],
+            context=arguments["context"],
+            decision=arguments["decision"],
+            rationale=arguments["rationale"],
+            alternatives=arguments.get("alternatives"),
+            consequences=arguments.get("consequences"),
+            related_issues=arguments.get("related_issues"),
+            related_files=arguments.get("related_files"),
+            tags=arguments.get("tags"),
+            discipline_notes=arguments.get("discipline_notes"),
+        )
+
+    elif name == "capture_lesson":
+        return await knowledge.handle_capture_lesson(
+            adapter=get_research_data_adapter(),
+            session=get_current_session(),
+            sprint=arguments["sprint"],
+            category=arguments["category"],
+            description=arguments["description"],
+            related_decisions=arguments.get("related_decisions"),
+        )
+
+    elif name == "search_knowledge":
+        return await knowledge.handle_search_knowledge(
+            adapter=get_research_data_adapter(),
+            query=arguments["query"],
+            type=arguments.get("type", "all"),
+            limit=arguments.get("limit", 5),
+        )
+
+    elif name == "list_decisions":
+        return await knowledge.handle_list_decisions(
+            adapter=get_research_data_adapter(),
+            status=arguments.get("status"),
+            tags=arguments.get("tags"),
+            limit=arguments.get("limit", 10),
+        )
+
+    elif name == "list_learnings":
+        return await knowledge.handle_list_learnings(
+            adapter=get_research_data_adapter(),
+            sprint=arguments.get("sprint"),
+            category=arguments.get("category"),
+            limit=arguments.get("limit", 20),
+        )
+
+    elif name == "generate_handover_summary":
+        return await knowledge.handle_generate_handover_summary(
+            adapter=get_research_data_adapter(),
+            semester=arguments["semester"],
+            additional_notes=arguments.get("additional_notes"),
+        )
+
+    elif name == "get_handover":
+        return await knowledge.handle_get_handover(
+            adapter=get_research_data_adapter(),
+            semester=arguments["semester"],
+        )
+
+    elif name == "review_handover":
+        return await knowledge.handle_review_handover(
+            adapter=get_research_data_adapter(),
+            package_id=arguments["package_id"],
+            approved=arguments["approved"],
+            notes=arguments.get("notes"),
+        )
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
