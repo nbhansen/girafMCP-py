@@ -20,15 +20,18 @@ from mcp.server.stdio import stdio_server  # noqa: E402
 from mcp.types import TextContent, Tool  # noqa: E402
 
 from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter  # noqa: E402
-from girafmcp.tools import context, github, search  # noqa: E402
+from girafmcp.tools import context, github, search, research  # noqa: E402
+from girafmcp.core.session import get_current_session  # noqa: E402
+from girafmcp.core.services.guardrails_service import GuardrailsService  # noqa: E402
 
 # Create server instance
 server = Server("giraf-mcp")
 
-# Initialize adapters (lazy loading)
+# Initialize adapters and services (lazy loading)
 _github_adapter: GitHubAdapter | None = None
 _chroma_adapter: ChromaAdapter | None = None
 _file_adapter: FileAdapter | None = None
+_guardrails_service: GuardrailsService | None = None
 
 
 def get_github_adapter() -> GitHubAdapter:
@@ -58,6 +61,14 @@ def get_file_adapter() -> FileAdapter:
         data_dir = os.environ.get("GIRAF_DATA_DIR")
         _file_adapter = FileAdapter(data_dir=data_dir)
     return _file_adapter
+
+
+def get_guardrails_service() -> GuardrailsService:
+    """Get or create guardrails service."""
+    global _guardrails_service
+    if _guardrails_service is None:
+        _guardrails_service = GuardrailsService()
+    return _guardrails_service
 
 
 # === Tool Definitions ===
@@ -282,6 +293,81 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        # === Research Feature Tools ===
+        Tool(
+            name="set_session_metadata",
+            description="Set research metadata for this session (team, role, discipline). Called once at session start for logging purposes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Anonymized team identifier (e.g., 'team_a', 'team_b')",
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["po", "sm", "dev"],
+                        "description": "Student's role in the project",
+                    },
+                    "discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Student's discipline",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="request_more_detail",
+            description="Request more detailed guidance on the previous query. Advances through hint -> guidance -> example -> solution tiers.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="configure_guardrails",
+            description="Configure guardrail settings for a team. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Team to configure",
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Enable or disable guardrails for team",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["off", "prompt", "tiered", "cooldown"],
+                        "description": "Guardrail mode",
+                    },
+                },
+                "required": ["team_id"],
+            },
+        ),
+        Tool(
+            name="get_guardrails_status",
+            description="Get current guardrails status for the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_feature_status",
+            description="Get status of all research features (enabled/disabled).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -365,8 +451,50 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     elif name == "list_static_documents":
         return await search.handle_list_static_documents(get_chroma_adapter())
 
+    # === Research Feature Tool Handlers ===
+
+    elif name == "set_session_metadata":
+        return await research.handle_set_session_metadata(
+            session=get_current_session(),
+            team_id=arguments.get("team_id"),
+            role=arguments.get("role"),
+            discipline=arguments.get("discipline"),
+        )
+
+    elif name == "request_more_detail":
+        return await research.handle_request_more_detail(
+            session=get_current_session(),
+            guardrails_service=get_guardrails_service(),
+            dispatch_fn=_dispatch_tool,
+        )
+
+    elif name == "configure_guardrails":
+        return await research.handle_configure_guardrails(
+            guardrails_service=get_guardrails_service(),
+            team_id=arguments["team_id"],
+            enabled=arguments.get("enabled"),
+            mode=arguments.get("mode"),
+        )
+
+    elif name == "get_guardrails_status":
+        return await research.handle_get_guardrails_status(
+            guardrails_service=get_guardrails_service(),
+            session=get_current_session(),
+        )
+
+    elif name == "get_feature_status":
+        return await research.handle_get_feature_status()
+
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
+
+
+async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """Dispatch a tool call to its handler.
+
+    This is used by request_more_detail to re-run the previous query.
+    """
+    return await call_tool(name, arguments)
 
 
 # === Startup Initialization ===
