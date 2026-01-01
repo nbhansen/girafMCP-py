@@ -17,6 +17,16 @@ from girafmcp.core.services.resilience_service import (
     ErrorType,
     ErrorDifficulty,
 )
+from girafmcp.core.services.multiframe_service import (
+    MultiFrameService,
+    MultiFrameConfig,
+    Discipline,
+    DisciplineProfile,
+    ExplanationStyle,
+    CodeDepth,
+    FramedExplanation,
+    ConceptTranslation,
+)
 
 __all__ = [
     "IngestionService",
@@ -33,4 +43,12 @@ __all__ = [
     "ErrorReport",
     "ErrorType",
     "ErrorDifficulty",
+    "MultiFrameService",
+    "MultiFrameConfig",
+    "Discipline",
+    "DisciplineProfile",
+    "ExplanationStyle",
+    "CodeDepth",
+    "FramedExplanation",
+    "ConceptTranslation",
 ]

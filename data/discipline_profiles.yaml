@@ -1,0 +1,212 @@
+# Discipline-specific knowledge needs and vocabulary mappings
+# for cross-disciplinary framing in GIRAF
+
+# Controlled via GIRAF_DISCIPLINE_ENABLED environment variable
+enabled: true
+
+# Default discipline when not specified
+default_discipline: "cs"
+
+# Discipline profiles
+disciplines:
+  cs:
+    name: "Computer Science"
+    vocabulary_emphasis:
+      - algorithms
+      - data structures
+      - complexity
+      - design patterns
+      - type systems
+      - testing
+      - refactoring
+    explanation_style: "technical_precise"
+    default_code_depth: "detailed"
+    assumed_knowledge:
+      - basic programming
+      - git workflow
+      - object-oriented concepts
+      - software architecture
+    translation_hints: {}  # CS doesn't need translations from technical terms
+
+  id:
+    name: "Interaction Design"
+    vocabulary_emphasis:
+      - user experience
+      - accessibility
+      - visual hierarchy
+      - interaction patterns
+      - user flows
+      - usability
+      - feedback loops
+    explanation_style: "conceptual_visual"
+    default_code_depth: "high_level"
+    assumed_knowledge:
+      - design thinking
+      - prototyping
+      - user research
+      - visual design
+    translation_hints:
+      "repository pattern": "Like separating your design files from your prototype"
+      "API endpoint": "The URL where our app talks to the server"
+      "state management": "How the app remembers what the user is doing"
+      "component": "A reusable building block, like a button or card in a design system"
+      "props": "Settings you pass to a component, like color or size"
+      "callback": "A function that runs when something happens, like a button click"
+      "async": "Operations that don't block the interface while waiting"
+      "model": "The data structure, like what fields a user profile contains"
+      "controller": "The logic that connects user actions to data changes"
+      "view": "What the user actually sees and interacts with"
+
+  business:
+    name: "Business/IT"
+    vocabulary_emphasis:
+      - value proposition
+      - stakeholders
+      - requirements
+      - ROI
+      - scalability
+      - maintenance cost
+      - risk
+    explanation_style: "outcome_focused"
+    default_code_depth: "overview"
+    assumed_knowledge:
+      - project management
+      - requirements gathering
+      - business analysis
+      - cost-benefit analysis
+    translation_hints:
+      "refactoring": "Reorganizing the code to reduce future maintenance costs"
+      "technical debt": "Shortcuts that save time now but cost more later"
+      "microservices": "Breaking the system into smaller, independently deployable pieces"
+      "unit test": "Automated checks that verify individual features work correctly"
+      "CI/CD": "Automated pipeline that tests and deploys code changes"
+      "dependency": "External code our system relies on (like suppliers)"
+      "scalability": "How well the system handles growth in users or data"
+      "API": "The contract for how systems communicate with each other"
+      "database": "Where all the application data is permanently stored"
+      "authentication": "Verifying who the user is (login)"
+      "authorization": "Determining what the user is allowed to do"
+
+  health:
+    name: "Health Informatics"
+    vocabulary_emphasis:
+      - patient safety
+      - clinical workflow
+      - data privacy
+      - interoperability
+      - FHIR/HL7
+      - audit trails
+      - consent management
+    explanation_style: "clinical_context"
+    default_code_depth: "moderate"
+    assumed_knowledge:
+      - healthcare domain
+      - privacy regulations
+      - clinical workflows
+      - patient safety principles
+    translation_hints:
+      "authentication": "Like checking ID before accessing patient records"
+      "data validation": "Ensuring medication dosages are within safe ranges"
+      "audit logging": "Recording who accessed what patient data and when"
+      "encryption": "Scrambling data so only authorized people can read it"
+      "backup": "Copies of data in case the main system fails"
+      "timeout": "Automatic logout for security, like session expiry on hospital computers"
+      "error handling": "What happens when something goes wrong (fail-safe)"
+      "race condition": "Two processes trying to update the same record simultaneously"
+      "transaction": "A set of changes that either all succeed or all fail together"
+
+# Cross-discipline translation mappings for common concepts
+concept_translations:
+  "dependency injection":
+    cs: "A design pattern where dependencies are passed in rather than created internally, enabling loose coupling and testability"
+    id: "The app gets its tools handed to it rather than finding them itself - makes it easier to swap out pieces"
+    business: "Components are interchangeable, reducing vendor lock-in and maintenance costs"
+    health: "Like how different lab systems can plug into the same hospital system - standardized connections"
+
+  "null pointer exception":
+    cs: "Attempting to use a reference that points to no object, typically causing a runtime crash"
+    id: "The app tried to use something that doesn't exist, like clicking a button that isn't there"
+    business: "A common bug where the system expects data that wasn't provided - causes crashes"
+    health: "Like trying to read a patient record that hasn't been created yet - the system fails"
+
+  "repository pattern":
+    cs: "An abstraction layer between business logic and data access, providing a collection-like interface"
+    id: "A way to organize where data comes from, separating the 'what' from the 'how'"
+    business: "Standardized data access that makes it easy to switch databases or vendors later"
+    health: "A consistent way to access patient data regardless of which system stores it"
+
+  "state management":
+    cs: "Centralized storage and update logic for application data, ensuring predictable behavior"
+    id: "How the app remembers what the user is doing across different screens and actions"
+    business: "The system that tracks all current data and ensures consistency across the app"
+    health: "Like the patient chart that tracks their current status and gets updated by different staff"
+
+  "middleware":
+    cs: "Software that sits between request and response, processing or transforming data in transit"
+    id: "A processing step that can modify requests or responses before they reach their destination"
+    business: "A layer that can add features like logging or security without changing core code"
+    health: "Like the triage nurse who checks patients before they see the doctor"
+
+  "callback":
+    cs: "A function passed as an argument to be executed later, typically when an event occurs"
+    id: "Code that runs when something happens - like what to do when a button is clicked"
+    business: "An action that's triggered automatically when certain conditions are met"
+    health: "Like a notification that goes to the nurse when a patient's vitals change"
+
+  "API":
+    cs: "Application Programming Interface - a defined set of methods for communication between systems"
+    id: "The agreed-upon language that lets different parts of the system talk to each other"
+    business: "The contract that defines how our system connects with external services"
+    health: "Like FHIR - a standard way for healthcare systems to exchange patient data"
+
+  "async/await":
+    cs: "Syntax for handling asynchronous operations, allowing non-blocking code execution"
+    id: "A way to do multiple things at once without the interface freezing"
+    business: "Efficient handling of operations that take time, like network requests"
+    health: "Like how a nurse can check on other patients while waiting for lab results"
+
+  "unit test":
+    cs: "Automated test of a single function or component in isolation"
+    id: "A quick check that one specific feature works correctly"
+    business: "Automated quality control that catches bugs before they reach users"
+    health: "Like checking one specific medication calculation is correct before deployment"
+
+  "refactoring":
+    cs: "Restructuring existing code without changing its external behavior"
+    id: "Cleaning up the code organization without changing what users see"
+    business: "Technical maintenance that reduces future costs without adding new features"
+    health: "Like reorganizing a medical records system while keeping all patient data intact"
+
+# Explanation style guidelines
+explanation_styles:
+  technical_precise:
+    characteristics:
+      - Uses standard technical terminology
+      - Includes code examples where relevant
+      - References specific patterns and concepts
+      - Assumes programming background
+    format: "Direct, detailed, with technical accuracy"
+
+  conceptual_visual:
+    characteristics:
+      - Uses analogies and metaphors
+      - Focuses on user-facing implications
+      - Emphasizes visual and interactive aspects
+      - Avoids unnecessary code detail
+    format: "Accessible, example-driven, with design context"
+
+  outcome_focused:
+    characteristics:
+      - Emphasizes business value and costs
+      - Uses organizational analogies
+      - Focuses on maintainability and scalability
+      - Quantifies impact where possible
+    format: "Result-oriented, with business justification"
+
+  clinical_context:
+    characteristics:
+      - Uses healthcare analogies
+      - Emphasizes safety and reliability
+      - Focuses on patient/user protection
+      - References compliance and audit requirements
+    format: "Safety-conscious, with healthcare parallels"

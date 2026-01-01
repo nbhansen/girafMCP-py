@@ -21,10 +21,11 @@ from mcp.types import TextContent, Tool  # noqa: E402
 
 from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter  # noqa: E402
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter  # noqa: E402
-from girafmcp.tools import context, github, search, research, knowledge, resilience  # noqa: E402
+from girafmcp.tools import context, github, search, research, knowledge, resilience, discipline  # noqa: E402
 from girafmcp.core.session import get_current_session  # noqa: E402
 from girafmcp.core.services.guardrails_service import GuardrailsService  # noqa: E402
 from girafmcp.core.services.resilience_service import ResilienceService  # noqa: E402
+from girafmcp.core.services.multiframe_service import MultiFrameService, MultiFrameConfig  # noqa: E402
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -36,6 +37,7 @@ _file_adapter: FileAdapter | None = None
 _guardrails_service: GuardrailsService | None = None
 _research_data_adapter: ResearchDataAdapter | None = None
 _resilience_service: ResilienceService | None = None
+_multiframe_service: MultiFrameService | None = None
 
 
 def get_github_adapter() -> GitHubAdapter:
@@ -90,6 +92,19 @@ def get_resilience_service() -> ResilienceService:
     if _resilience_service is None:
         _resilience_service = ResilienceService()
     return _resilience_service
+
+
+def get_multiframe_service() -> MultiFrameService:
+    """Get or create multiframe service."""
+    global _multiframe_service
+    if _multiframe_service is None:
+        config_path = Path(os.environ.get(
+            "GIRAF_DISCIPLINE_PROFILES",
+            str(_project_root / "data" / "discipline_profiles.yaml")
+        ))
+        config = MultiFrameConfig(config_path)
+        _multiframe_service = MultiFrameService(config)
+    return _multiframe_service
 
 
 # === Tool Definitions ===
@@ -657,6 +672,83 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        # === Cross-Disciplinary Framing Tools ===
+        Tool(
+            name="explain_for_discipline",
+            description="Re-explain a concept or response for a different disciplinary background (CS, Interaction Design, Business, Health).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Target discipline for explanation",
+                    },
+                    "concept": {
+                        "type": "string",
+                        "description": "Specific concept to explain (optional)",
+                    },
+                },
+                "required": ["target_discipline"],
+            },
+        ),
+        Tool(
+            name="compare_perspectives",
+            description="Show how different disciplines would approach or understand a topic or design decision.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "The topic or decision to analyze",
+                    },
+                },
+                "required": ["topic"],
+            },
+        ),
+        Tool(
+            name="translate_term",
+            description="Translate a technical term for a specific discipline or all disciplines.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "term": {
+                        "type": "string",
+                        "description": "Technical term to translate",
+                    },
+                    "target_discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Target discipline (optional, shows all if not specified)",
+                    },
+                },
+                "required": ["term"],
+            },
+        ),
+        Tool(
+            name="get_discipline_profile",
+            description="Get detailed information about a discipline profile including vocabulary emphasis and explanation style.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Discipline to get profile for",
+                    },
+                },
+                "required": ["discipline"],
+            },
+        ),
+        Tool(
+            name="list_disciplines",
+            description="List all available discipline profiles with summaries.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
     ]
 
 
@@ -876,6 +968,40 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await resilience.handle_get_resilience_metrics(
             service=get_resilience_service(),
             session_id=arguments.get("session_id"),
+        )
+
+    # === Cross-Disciplinary Framing Tool Handlers ===
+
+    elif name == "explain_for_discipline":
+        return await discipline.handle_explain_for_discipline(
+            service=get_multiframe_service(),
+            session=get_current_session(),
+            target_discipline=arguments["target_discipline"],
+            concept=arguments.get("concept"),
+        )
+
+    elif name == "compare_perspectives":
+        return await discipline.handle_compare_perspectives(
+            service=get_multiframe_service(),
+            topic=arguments["topic"],
+        )
+
+    elif name == "translate_term":
+        return await discipline.handle_translate_term(
+            service=get_multiframe_service(),
+            term=arguments["term"],
+            target_discipline=arguments.get("target_discipline"),
+        )
+
+    elif name == "get_discipline_profile":
+        return await discipline.handle_get_discipline_profile(
+            service=get_multiframe_service(),
+            discipline=arguments["discipline"],
+        )
+
+    elif name == "list_disciplines":
+        return await discipline.handle_list_disciplines(
+            service=get_multiframe_service(),
         )
 
     else:
