@@ -6,12 +6,94 @@ Tools for adapting explanations across disciplinary boundaries
 
 import logging
 
-from mcp.types import TextContent
+from mcp.types import TextContent, Tool
 
 from girafmcp.core.services.multiframe_service import MultiFrameService
 from girafmcp.core.session import SessionState
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for discipline framing tools."""
+    return [
+        Tool(
+            name="explain_for_discipline",
+            description="Re-explain a concept or response for a different disciplinary background (CS, Interaction Design, Business, Health).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Target discipline for explanation",
+                    },
+                    "concept": {
+                        "type": "string",
+                        "description": "Specific concept to explain (optional)",
+                    },
+                },
+                "required": ["target_discipline"],
+            },
+        ),
+        Tool(
+            name="compare_perspectives",
+            description="Show how different disciplines would approach or understand a topic or design decision.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "The topic or decision to analyze",
+                    },
+                },
+                "required": ["topic"],
+            },
+        ),
+        Tool(
+            name="translate_term",
+            description="Translate a technical term for a specific discipline or all disciplines.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "term": {
+                        "type": "string",
+                        "description": "Technical term to translate",
+                    },
+                    "target_discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Target discipline (optional, shows all if not specified)",
+                    },
+                },
+                "required": ["term"],
+            },
+        ),
+        Tool(
+            name="get_discipline_profile",
+            description="Get detailed information about a discipline profile including vocabulary emphasis and explanation style.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Discipline to get profile for",
+                    },
+                },
+                "required": ["discipline"],
+            },
+        ),
+        Tool(
+            name="list_disciplines",
+            description="List all available discipline profiles with summaries.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+    ]
 
 
 # ============================================================================

@@ -1,10 +1,69 @@
 """Search-related tool handlers using vector store."""
 
 import logging
-from mcp.types import TextContent
+from typing import Any
+from mcp.types import TextContent, Tool
 from girafmcp.adapters import ChromaAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for search tools."""
+    return [
+        Tool(
+            name="search_documentation",
+            description="Semantic search across GIRAF wiki and documentation. Returns relevant sections with URLs.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (natural language)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="search_static_documents",
+            description="Semantic search over PDFs, research papers, and static documents. Returns content with page-level citations.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (natural language)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter by tags (e.g., ['research', 'handover'])",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_static_documents",
+            description="List all ingested static documents (PDFs, research papers) with their tags.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+    ]
 
 
 async def handle_search_documentation(

@@ -5,8 +5,9 @@ Tools for session management, guardrails, and research data export.
 
 import logging
 from pathlib import Path
+from typing import Any
 
-from mcp.types import TextContent
+from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.services.guardrails_service import (
@@ -16,6 +17,113 @@ from girafmcp.core.services.guardrails_service import (
 from girafmcp.core.session import SessionState
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for research tools."""
+    return [
+        Tool(
+            name="set_session_metadata",
+            description="Set research metadata for this session (team, role, discipline). Called once at session start for logging purposes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Anonymized team identifier (e.g., 'team_a', 'team_b')",
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": ["po", "sm", "dev"],
+                        "description": "Student's role in the project",
+                    },
+                    "discipline": {
+                        "type": "string",
+                        "enum": ["cs", "id", "business", "health"],
+                        "description": "Student's discipline",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="request_more_detail",
+            description="Request more detailed guidance on the previous query. Advances through hint -> guidance -> example -> solution tiers.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="configure_guardrails",
+            description="Configure guardrail settings for a team. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Team to configure",
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Enable or disable guardrails for team",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["off", "prompt", "tiered", "cooldown"],
+                        "description": "Guardrail mode",
+                    },
+                },
+                "required": ["team_id"],
+            },
+        ),
+        Tool(
+            name="get_guardrails_status",
+            description="Get current guardrails status for the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_feature_status",
+            description="Get status of all research features (enabled/disabled).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        # Supervisor-only export tool (was missing from server.py tool list, adding here)
+        Tool(
+            name="export_query_logs",
+            description="Export query logs to CSV for research analysis. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "output_path": {
+                        "type": "string",
+                        "description": "Path for CSV output (optional)",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "Filter by start date (ISO 8601)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "Filter by end date (ISO 8601)",
+                    },
+                    "team_id": {
+                        "type": "string",
+                        "description": "Filter by team",
+                    },
+                },
+                "required": [],
+            },
+        ),
+    ]
 
 
 # ============================================================================

@@ -1,10 +1,77 @@
 """Context, domain knowledge, and persona tool handlers."""
 
 import logging
-from mcp.types import TextContent
+from typing import Any
+from mcp.types import TextContent, Tool
 from girafmcp.adapters import FileAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for context tools."""
+    return [
+        Tool(
+            name="get_project_context",
+            description="Get the current project context including semester focus, priorities, known issues, and recent decisions.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="list_personas",
+            description="List available user personas. Personas help tailor responses to different user backgrounds (CS student, pedagogy student, supervisor, etc.)",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_persona",
+            description="Get details about a specific persona including communication style and focus areas.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "persona_id": {
+                        "type": "string",
+                        "description": "Persona ID (e.g., 'cs_student', 'pedagogy_student', 'supervisor', 'new_student')",
+                    },
+                },
+                "required": ["persona_id"],
+            },
+        ),
+        Tool(
+            name="search_domain_knowledge",
+            description="Search domain knowledge about autism, visual schedules, sensory considerations, and other background information relevant to GIRAF users.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (keywords about autism, visual schedules, accessibility, etc.)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_domain_topics",
+            description="List all available domain knowledge topics (autism basics, visual schedules, sensory considerations, etc.)",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+    ]
 
 
 async def handle_get_project_context(adapter: FileAdapter) -> list[TextContent]:

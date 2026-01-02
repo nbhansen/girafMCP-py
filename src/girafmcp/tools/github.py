@@ -1,10 +1,120 @@
 """GitHub-related tool handlers."""
 
 import logging
-from mcp.types import TextContent
+from typing import Any
+from mcp.types import TextContent, Tool
 from girafmcp.adapters import GitHubAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for GitHub tools."""
+    return [
+        Tool(
+            name="list_repositories",
+            description="List all GIRAF repositories with their descriptions and URLs",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_file",
+            description="Get the content of a file from a GIRAF repository. Returns content with a permalink for citation.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "Repository name (e.g., 'foodplanner', 'wiki')",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "File path within the repository",
+                    },
+                    "ref": {
+                        "type": "string",
+                        "description": "Git ref (branch, tag, or commit SHA). Optional.",
+                    },
+                },
+                "required": ["repo", "path"],
+            },
+        ),
+        Tool(
+            name="search_code",
+            description="Search for code across GIRAF repositories. Returns matching files with GitHub permalinks.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query",
+                    },
+                    "repo": {
+                        "type": "string",
+                        "description": "Optional: limit search to a specific repository",
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="get_permalink",
+            description="Generate a GitHub permalink to a specific file and line range for citation.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "Repository name",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "File path",
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Start line number (optional)",
+                    },
+                    "end_line": {
+                        "type": "integer",
+                        "description": "End line number for range (optional)",
+                    },
+                },
+                "required": ["repo", "path"],
+            },
+        ),
+        Tool(
+            name="search_wiki",
+            description="Search the GIRAF wiki documentation. Fetches pages live from GitHub and performs keyword search. Returns matching pages with URLs.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (keywords to find in wiki pages)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
+        Tool(
+            name="list_wiki_pages",
+            description="List all pages in the GIRAF wiki. Returns page titles and URLs.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+    ]
 
 
 async def handle_list_repositories(adapter: GitHubAdapter) -> list[TextContent]:

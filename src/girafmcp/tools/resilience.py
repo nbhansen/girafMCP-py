@@ -7,7 +7,7 @@ to configure resilience testing scenarios.
 import logging
 from typing import Any
 
-from mcp.types import TextContent
+from mcp.types import TextContent, Tool
 
 from girafmcp.core.services.resilience_service import (
     ResilienceService,
@@ -16,6 +16,80 @@ from girafmcp.core.services.resilience_service import (
 from girafmcp.core.session import SessionState
 
 logger = logging.getLogger(__name__)
+
+
+def list_tools() -> list[Tool]:
+    """Return tool definitions for resilience tools."""
+    return [
+        Tool(
+            name="report_error_found",
+            description="Report a suspected error in AI-generated code or guidance. Use when you detect an issue that needs correction.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tool_name": {
+                        "type": "string",
+                        "description": "The tool where the error was found",
+                    },
+                    "error_description": {
+                        "type": "string",
+                        "description": "Description of the suspected error",
+                    },
+                    "proposed_fix": {
+                        "type": "string",
+                        "description": "Your proposed correction (optional)",
+                    },
+                },
+                "required": ["tool_name", "error_description"],
+            },
+        ),
+        Tool(
+            name="configure_resilience_test",
+            description="Configure resilience testing for a team. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "team_id": {
+                        "type": "string",
+                        "description": "Team to configure",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["normal", "degraded", "unavailable", "delayed"],
+                        "description": "Resilience test mode",
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Enable or disable resilience testing",
+                    },
+                },
+                "required": ["team_id"],
+            },
+        ),
+        Tool(
+            name="get_resilience_status",
+            description="Get current resilience testing status for the session.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_resilience_metrics",
+            description="Get error detection metrics for research analysis. Supervisor only.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Optional: filter by session ID",
+                    },
+                },
+                "required": [],
+            },
+        ),
+    ]
 
 
 # ============================================================================
