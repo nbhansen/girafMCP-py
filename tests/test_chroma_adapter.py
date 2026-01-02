@@ -15,46 +15,44 @@ class TestChromaAdapter:
     """Tests for ChromaAdapter using ephemeral mode."""
 
     @pytest.fixture
-    def adapter(self):
-        """Create a fresh adapter for each test."""
-        # Each test gets a brand new ephemeral client
-        return ChromaAdapter(ephemeral=True)
-
-    @pytest.fixture
-    def test_collection(self, adapter):
+    def test_collection(self, mock_chroma_adapter):
         """Standard test collection name with cleanup."""
         collection_name = "test-giraf-docs"
         # Clean up any existing collection before the test
         try:
-            adapter._client.delete_collection(collection_name)
+            mock_chroma_adapter._client.delete_collection(collection_name)
         except Exception:
             pass
         return collection_name
 
     # === Collection Management ===
 
-    async def test_creates_collection(self, adapter, test_collection):
+    async def test_creates_collection(self, mock_chroma_adapter, test_collection):
         """Should create a new collection."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         collections = await adapter.list_collections()
         assert test_collection in collections
 
-    async def test_create_collection_is_idempotent(self, adapter, test_collection):
+    async def test_create_collection_is_idempotent(self, mock_chroma_adapter, test_collection):
         """Creating same collection twice should not raise."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
         await adapter.create_collection(test_collection)  # Should not raise
 
         collections = await adapter.list_collections()
         assert collections.count(test_collection) == 1
 
-    async def test_list_collections_empty(self, adapter):
+    async def test_list_collections_empty(self, mock_chroma_adapter):
         """Should return empty list when no collections exist."""
+        adapter = mock_chroma_adapter
         collections = await adapter.list_collections()
         assert isinstance(collections, list)
 
-    async def test_delete_collection(self, adapter, test_collection):
+    async def test_delete_collection(self, mock_chroma_adapter, test_collection):
         """Should delete a collection."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
         await adapter.delete_collection(test_collection)
 
@@ -63,8 +61,9 @@ class TestChromaAdapter:
 
     # === Document Operations ===
 
-    async def test_upserts_documents(self, adapter, test_collection):
+    async def test_upserts_documents(self, mock_chroma_adapter, test_collection):
         """Should add documents to a collection."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         docs = [
@@ -96,8 +95,9 @@ class TestChromaAdapter:
         count = await adapter.count(test_collection)
         assert count == 2
 
-    async def test_upsert_updates_existing_document(self, adapter, test_collection):
+    async def test_upsert_updates_existing_document(self, mock_chroma_adapter, test_collection):
         """Upserting with same ID should update, not duplicate."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         doc = Document(
@@ -124,8 +124,9 @@ class TestChromaAdapter:
         assert retrieved is not None
         assert retrieved.content == "Updated content"
 
-    async def test_get_document_by_id(self, adapter, test_collection):
+    async def test_get_document_by_id(self, mock_chroma_adapter, test_collection):
         """Should retrieve a document by its ID."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         doc = Document(
@@ -149,15 +150,17 @@ class TestChromaAdapter:
         assert retrieved.metadata.url == "https://giraf.cs.aau.dk/domain/autism"
         assert retrieved.metadata.topic == "autism-basics"
 
-    async def test_get_nonexistent_document_returns_none(self, adapter, test_collection):
+    async def test_get_nonexistent_document_returns_none(self, mock_chroma_adapter, test_collection):
         """Should return None for non-existent document."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         result = await adapter.get(test_collection, "nonexistent-id")
         assert result is None
 
-    async def test_delete_documents(self, adapter, test_collection):
+    async def test_delete_documents(self, mock_chroma_adapter, test_collection):
         """Should delete documents by ID."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         docs = [
@@ -181,8 +184,9 @@ class TestChromaAdapter:
         assert await adapter.get(test_collection, "doc-1") is None
         assert await adapter.get(test_collection, "doc-2") is not None
 
-    async def test_delete_nonexistent_documents_is_safe(self, adapter, test_collection):
+    async def test_delete_nonexistent_documents_is_safe(self, mock_chroma_adapter, test_collection):
         """Deleting non-existent IDs should not raise."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         # Should not raise
@@ -190,8 +194,9 @@ class TestChromaAdapter:
 
     # === Semantic Search ===
 
-    async def test_search_finds_similar_documents(self, adapter, test_collection):
+    async def test_search_finds_similar_documents(self, mock_chroma_adapter, test_collection):
         """Should find semantically similar documents."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         docs = [
@@ -230,8 +235,9 @@ class TestChromaAdapter:
         assert results[0].score > 0
         assert results[0].metadata.url == "https://giraf.cs.aau.dk/domain/visual-supports"
 
-    async def test_search_returns_similarity_scores(self, adapter, test_collection):
+    async def test_search_returns_similarity_scores(self, mock_chroma_adapter, test_collection):
         """Search results should include similarity scores."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         doc = Document(
@@ -247,8 +253,9 @@ class TestChromaAdapter:
         # Score should be between 0 and 1
         assert 0 <= results[0].score <= 1
 
-    async def test_search_respects_limit(self, adapter, test_collection):
+    async def test_search_respects_limit(self, mock_chroma_adapter, test_collection):
         """Should return at most 'limit' results."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         docs = [
@@ -265,8 +272,9 @@ class TestChromaAdapter:
 
         assert len(results) == 3
 
-    async def test_search_empty_collection_returns_empty(self, adapter, test_collection):
+    async def test_search_empty_collection_returns_empty(self, mock_chroma_adapter, test_collection):
         """Searching empty collection should return empty list."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         results = await adapter.search(test_collection, "anything", limit=5)
@@ -275,8 +283,9 @@ class TestChromaAdapter:
 
     # === Count ===
 
-    async def test_count_documents(self, adapter, test_collection):
+    async def test_count_documents(self, mock_chroma_adapter, test_collection):
         """Should return correct document count."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         assert await adapter.count(test_collection) == 0
@@ -295,8 +304,9 @@ class TestChromaAdapter:
 
     # === Metadata Preservation ===
 
-    async def test_preserves_all_metadata_fields(self, adapter, test_collection):
+    async def test_preserves_all_metadata_fields(self, mock_chroma_adapter, test_collection):
         """All metadata fields should be preserved through upsert/get cycle."""
+        adapter = mock_chroma_adapter
         await adapter.create_collection(test_collection)
 
         doc = Document(

@@ -215,20 +215,20 @@ ruff check src/
 ```
 girafMCP-py/
 ├── src/girafmcp/
-│   ├── core/              # Ports, types, services
+│   ├── core/              # Ports, types, services, and DependencyContainer
 │   │   └── services/      # Guardrails, resilience, multiframe services
-│   ├── adapters/          # GitHub, ChromaDB, PDF, knowledge adapters
+│   ├── adapters/          # GitHub, ChromaDB, PDF, SQLite adapters
 │   ├── middleware/        # Request/response middleware
-│   ├── tools/             # Tool handlers by category
-│   └── server.py          # MCP server (36 tools)
+│   ├── tools/             # Modular tool handlers & definitions by category
+│   └── server.py          # MCP server entry point & tool aggregation
 ├── data/
 │   ├── context.yaml       # Project context
 │   ├── personas.yaml      # User personas
 │   ├── guardrails.yaml    # Guardrails configuration
 │   ├── resilience_tests.yaml  # Error injection config
 │   ├── discipline_profiles.yaml  # Cross-disciplinary framing
-│   └── domain/            # Domain knowledge
-└── tests/
+│   └── domain/            # Domain knowledge (Markdown)
+└── tests/                 # Comprehensive Pytest suite
 ```
 
 ## Related Projects

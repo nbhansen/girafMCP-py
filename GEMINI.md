@@ -12,12 +12,14 @@
 *   **Networking:** httpx
 
 ### Architecture
-The project follows a **Hexagonal Architecture**:
-*   **Server (`src/girafmcp/server.py`):** Defines the MCP tools, handles dispatch, and manages startup/initialization.
-*   **Tools (`src/girafmcp/tools/`):** Contains specialized tool handlers (github, search, context).
-*   **Core (`src/girafmcp/core/`):** Contains business logic, ports (interfaces), and types.
-*   **Adapters (`src/girafmcp/adapters/`):** Implements interfaces for external systems (GitHub, ChromaDB, File System, PDF processing).
-*   **Data (`data/`):** Stores domain knowledge (Markdown), project context (YAML), and personas (YAML).
+The project follows a **Hexagonal Architecture** with a central **Dependency Injection** container:
+*   **Server (`src/girafmcp/server.py`):** Entry point, handles tool aggregation and dispatch.
+*   **Container (`src/girafmcp/core/container.py`):** Manages the lifecycle of adapters and services (DI).
+*   **Tools (`src/girafmcp/tools/`):** Categorized tool handlers. Each module exports its own `Tool` definitions via `list_tools()`.
+*   **Middleware (`src/girafmcp/middleware/`):** Request/response interceptors for logging, guardrails, and discipline framing.
+*   **Core (`src/girafmcp/core/`):** Business logic, services (Guardrails, Resilience, MultiFrame), ports (interfaces), and domain types.
+*   **Adapters (`src/girafmcp/adapters/`):** Implementations for external systems (GitHub, ChromaDB, File System, SQLite).
+*   **Data (`data/`):** Stores domain knowledge (Markdown), project context (YAML), and research configurations.
 
 ## Building and Running
 
@@ -93,7 +95,8 @@ The project follows a **Hexagonal Architecture**:
 *   **`src/girafmcp/`**: Main source code.
     *   `adapters/`: Implementations for external interactions (GitHub, Chroma, etc.).
     *   `core/`: Application core, including ports and services.
-    *   `tools/`: Tool definitions and handlers (if separated).
+    *   `middleware/`: Request/response interceptors.
+    *   `tools/`: Tool definitions and handlers by category.
 *   **`data/`**: Static data files.
     *   `domain/`: Markdown files explaining autism and accessibility concepts.
     *   `context.yaml`: Current semester focus and priorities.
@@ -108,7 +111,8 @@ The project follows a **Hexagonal Architecture**:
     *   Follow the hexagonal architecture.
     *   Ensure all tests pass (`pytest`).
     *   Adhere to linting standards (`ruff`).
-    *   Add new tools by defining them in `server.py` and implementing a handler.
+    *   Add new tools by defining them in a relevant `src/girafmcp/tools/` module and wiring them in `server.py`.
+    *   Use the `DependencyContainer` for managing shared state/adapters.
 
 ## Key Files
 *   `README.md`: General project introduction and usage.

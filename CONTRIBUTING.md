@@ -267,48 +267,63 @@ mypy src/
 
 ### Adding a New Tool
 
-1. **Define the tool** in `server.py` under `list_tools()`:
+1. **Categorize the tool**: Decide which module in `src/girafmcp/tools/` it belongs to (e.g., `github.py`, `search.py`, `research.py`). If it's a new category, create a new file.
+
+2. **Define the tool metadata**: Add the `Tool` definition to the `list_tools()` function in the relevant tool module:
 
 ```python
-Tool(
-    name="my_new_tool",
-    description="What this tool does",
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "param1": {"type": "string", "description": "..."},
-        },
-        "required": ["param1"],
-    },
-)
+def list_tools() -> list[Tool]:
+    return [
+        # ... existing tools ...
+        Tool(
+            name="my_new_tool",
+            description="What this tool does",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string", "description": "..."},
+                },
+                "required": ["param1"],
+            },
+        ),
+    ]
 ```
 
-2. **Add dispatch** in `call_tool()`:
+3. **Implement handler**: Create an `async` handler function in the same file:
 
 ```python
-elif name == "my_new_tool":
-    return await handle_my_new_tool(
-        param1=arguments["param1"],
-    )
-```
-
-3. **Implement handler**:
-
-```python
-async def handle_my_new_tool(param1: str) -> list[TextContent]:
-    # Implementation
+async def handle_my_new_tool(adapter: MyAdapter, param1: str) -> list[TextContent]:
+    # Implementation using the provided adapter
     return [TextContent(type="text", text="Result")]
 ```
 
-4. **Add tests** in `tests/test_server_tools.py`
+4. **Wire it up in `server.py`**:
+   - Update `call_tool()` in `src/girafmcp/server.py` to dispatch the new tool.
+   - Use `container.your_adapter` to pass dependencies to the handler.
+
+```python
+    elif name == "my_new_tool":
+        return await my_module.handle_my_new_tool(
+            adapter=container.my_adapter,
+            param1=arguments["param1"],
+        )
+```
+
+5. **Update DependencyContainer** (if needed): If your tool needs a new adapter or service, add it as a property to `src/girafmcp/core/container.py`.
+
+6. **Add tests**: Create a new test file or add to an existing one in `tests/`.
 
 ### Architecture
 
-The project follows hexagonal architecture with middleware:
+The project follows a **Hexagonal Architecture** with a central **Dependency Injection** container:
 
 ```
 ┌─────────────────────────────────┐
-│      MCP Server (server.py)     │  Tool definitions (36 tools)
+│      MCP Server (server.py)     │  Entry point & Tool aggregation
+└──────────────┬──────────────────┘
+               │
+┌──────────────▼──────────────────┐
+│   DependencyContainer (core/)   │  Singleton lifecycle management
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
@@ -318,30 +333,30 @@ The project follows hexagonal architecture with middleware:
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│     Tool Handlers (tools/)      │  Business logic by category
+│     Tool Handlers (tools/)      │  Interface logic by category
 │   - search, github, context     │
 │   - knowledge, resilience       │
-│   - discipline, guardrails      │
+│   - discipline, research        │
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│    Services (core/services/)    │  Domain logic
+│    Services (core/services/)    │  Domain & Business logic
 │   - GuardrailsService           │
 │   - ResilienceService           │
 │   - MultiFrameService           │
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│    Ports (core/ports.py)        │  Interfaces
+│    Ports (core/ports.py)        │  Interfaces (Port definition)
 └──────────────┬──────────────────┘
                │
 ┌──────────────▼──────────────────┐
-│   Adapters (adapters/*.py)      │  External integrations
+│   Adapters (adapters/*.py)      │  External integrations (Impl)
 │   - GitHubAdapter               │
 │   - ChromaAdapter               │
 │   - FileAdapter                 │
 │   - PDFAdapter                  │
-│   - KnowledgeStoreAdapter       │
+│   - ResearchDataAdapter         │
 └─────────────────────────────────┘
 ```
 

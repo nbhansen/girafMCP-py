@@ -34,13 +34,6 @@ class TestArchitecturalDecisions:
     """Tests for architectural decision storage."""
 
     @pytest.fixture
-    def adapter(self) -> ResearchDataAdapter:
-        """Create adapter with temporary database."""
-        with TemporaryDirectory() as tmpdir:
-            db_path = Path(tmpdir) / "test.db"
-            yield ResearchDataAdapter(db_path)
-
-    @pytest.fixture
     def sample_decision(self) -> ArchitecturalDecision:
         """Create a sample decision for testing."""
         return ArchitecturalDecision(
@@ -61,9 +54,10 @@ class TestArchitecturalDecisions:
         )
 
     async def test_save_and_get_decision(
-        self, adapter: ResearchDataAdapter, sample_decision: ArchitecturalDecision
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_decision: ArchitecturalDecision
     ) -> None:
         """Decisions should be saved and retrieved correctly."""
+        adapter = mock_research_data_adapter
         await adapter.save_decision(sample_decision)
 
         retrieved = await adapter.get_decision(sample_decision.id)
@@ -81,12 +75,12 @@ class TestArchitecturalDecisions:
         assert retrieved.tags == sample_decision.tags
         assert retrieved.discipline_notes == sample_decision.discipline_notes
 
-    async def test_get_nonexistent_decision(self, adapter: ResearchDataAdapter) -> None:
+    async def test_get_nonexistent_decision(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Getting a nonexistent decision should return None."""
-        result = await adapter.get_decision("nonexistent-id")
+        result = await mock_research_data_adapter.get_decision("nonexistent-id")
         assert result is None
 
-    async def test_list_decisions(self, adapter: ResearchDataAdapter) -> None:
+    async def test_list_decisions(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """list_decisions should return all saved decisions."""
         decisions = [
             ArchitecturalDecision(
@@ -102,12 +96,12 @@ class TestArchitecturalDecisions:
         ]
 
         for d in decisions:
-            await adapter.save_decision(d)
+            await mock_research_data_adapter.save_decision(d)
 
-        result = await adapter.list_decisions()
+        result = await mock_research_data_adapter.list_decisions()
         assert len(result) == 3
 
-    async def test_list_decisions_by_status(self, adapter: ResearchDataAdapter) -> None:
+    async def test_list_decisions_by_status(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """list_decisions should filter by status."""
         accepted = ArchitecturalDecision(
             id=str(uuid.uuid4()),
@@ -128,14 +122,14 @@ class TestArchitecturalDecisions:
             status=DecisionStatus.DEPRECATED,
         )
 
-        await adapter.save_decision(accepted)
-        await adapter.save_decision(deprecated)
+        await mock_research_data_adapter.save_decision(accepted)
+        await mock_research_data_adapter.save_decision(deprecated)
 
-        result = await adapter.list_decisions(status=DecisionStatus.ACCEPTED)
+        result = await mock_research_data_adapter.list_decisions(status=DecisionStatus.ACCEPTED)
         assert len(result) == 1
         assert result[0].status == DecisionStatus.ACCEPTED
 
-    async def test_list_decisions_by_tags(self, adapter: ResearchDataAdapter) -> None:
+    async def test_list_decisions_by_tags(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """list_decisions should filter by tags."""
         db_decision = ArchitecturalDecision(
             id=str(uuid.uuid4()),
@@ -156,14 +150,14 @@ class TestArchitecturalDecisions:
             tags=["api", "backend"],
         )
 
-        await adapter.save_decision(db_decision)
-        await adapter.save_decision(api_decision)
+        await mock_research_data_adapter.save_decision(db_decision)
+        await mock_research_data_adapter.save_decision(api_decision)
 
-        result = await adapter.list_decisions(tags=["database"])
+        result = await mock_research_data_adapter.list_decisions(tags=["database"])
         assert len(result) == 1
         assert "database" in result[0].tags
 
-    async def test_search_decisions(self, adapter: ResearchDataAdapter) -> None:
+    async def test_search_decisions(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """search_decisions should find matching decisions."""
         decision = ArchitecturalDecision(
             id=str(uuid.uuid4()),
@@ -174,24 +168,25 @@ class TestArchitecturalDecisions:
             rationale="Better JSON support",
         )
 
-        await adapter.save_decision(decision)
+        await mock_research_data_adapter.save_decision(decision)
 
         # Search in title
-        result = await adapter.search_decisions("PostgreSQL")
+        result = await mock_research_data_adapter.search_decisions("PostgreSQL")
         assert len(result) == 1
 
         # Search in context
-        result = await adapter.search_decisions("better performance")
+        result = await mock_research_data_adapter.search_decisions("better performance")
         assert len(result) == 1
 
         # Search with no matches
-        result = await adapter.search_decisions("nonexistent term xyz")
+        result = await mock_research_data_adapter.search_decisions("nonexistent term xyz")
         assert len(result) == 0
 
     async def test_update_decision(
-        self, adapter: ResearchDataAdapter, sample_decision: ArchitecturalDecision
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_decision: ArchitecturalDecision
     ) -> None:
         """Saving a decision with the same ID should update it."""
+        adapter = mock_research_data_adapter
         await adapter.save_decision(sample_decision)
 
         # Update the decision
@@ -209,13 +204,6 @@ class TestRetrospectiveLearnings:
     """Tests for retrospective learning storage."""
 
     @pytest.fixture
-    def adapter(self) -> ResearchDataAdapter:
-        """Create adapter with temporary database."""
-        with TemporaryDirectory() as tmpdir:
-            db_path = Path(tmpdir) / "test.db"
-            yield ResearchDataAdapter(db_path)
-
-    @pytest.fixture
     def sample_learning(self) -> RetrospectiveLearning:
         """Create a sample learning for testing."""
         return RetrospectiveLearning(
@@ -230,9 +218,10 @@ class TestRetrospectiveLearnings:
         )
 
     async def test_save_and_get_learning(
-        self, adapter: ResearchDataAdapter, sample_learning: RetrospectiveLearning
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_learning: RetrospectiveLearning
     ) -> None:
         """Learnings should be saved and retrieved correctly."""
+        adapter = mock_research_data_adapter
         await adapter.save_learning(sample_learning)
 
         retrieved = await adapter.get_learning(sample_learning.id)
@@ -243,12 +232,12 @@ class TestRetrospectiveLearnings:
         assert retrieved.category == LearningCategory.WENT_WELL
         assert retrieved.description == sample_learning.description
 
-    async def test_get_nonexistent_learning(self, adapter: ResearchDataAdapter) -> None:
+    async def test_get_nonexistent_learning(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Getting a nonexistent learning should return None."""
-        result = await adapter.get_learning("nonexistent-id")
+        result = await mock_research_data_adapter.get_learning("nonexistent-id")
         assert result is None
 
-    async def test_get_learnings_by_sprint(self, adapter: ResearchDataAdapter) -> None:
+    async def test_get_learnings_by_sprint(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """get_learnings_by_sprint should return learnings for a specific sprint."""
         sprint1 = RetrospectiveLearning(
             id=str(uuid.uuid4()),
@@ -265,14 +254,14 @@ class TestRetrospectiveLearnings:
             description="Sprint 2 learning",
         )
 
-        await adapter.save_learning(sprint1)
-        await adapter.save_learning(sprint2)
+        await mock_research_data_adapter.save_learning(sprint1)
+        await mock_research_data_adapter.save_learning(sprint2)
 
-        result = await adapter.get_learnings_by_sprint("2025s1-sprint1")
+        result = await mock_research_data_adapter.get_learnings_by_sprint("2025s1-sprint1")
         assert len(result) == 1
         assert result[0].sprint == "2025s1-sprint1"
 
-    async def test_get_learnings_by_category(self, adapter: ResearchDataAdapter) -> None:
+    async def test_get_learnings_by_category(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """get_learnings_by_category should filter by category."""
         went_well = RetrospectiveLearning(
             id=str(uuid.uuid4()),
@@ -289,14 +278,14 @@ class TestRetrospectiveLearnings:
             description="Something to fix",
         )
 
-        await adapter.save_learning(went_well)
-        await adapter.save_learning(to_improve)
+        await mock_research_data_adapter.save_learning(went_well)
+        await mock_research_data_adapter.save_learning(to_improve)
 
-        result = await adapter.get_learnings_by_category(LearningCategory.WENT_WELL)
+        result = await mock_research_data_adapter.get_learnings_by_category(LearningCategory.WENT_WELL)
         assert len(result) == 1
         assert result[0].category == LearningCategory.WENT_WELL
 
-    async def test_action_item_follow_up_status(self, adapter: ResearchDataAdapter) -> None:
+    async def test_action_item_follow_up_status(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Action items should track follow-up status."""
         action_item = RetrospectiveLearning(
             id=str(uuid.uuid4()),
@@ -307,21 +296,21 @@ class TestRetrospectiveLearnings:
             follow_up_status=FollowUpStatus.PENDING,
         )
 
-        await adapter.save_learning(action_item)
+        await mock_research_data_adapter.save_learning(action_item)
 
-        retrieved = await adapter.get_learning(action_item.id)
+        retrieved = await mock_research_data_adapter.get_learning(action_item.id)
         assert retrieved is not None
         assert retrieved.follow_up_status == FollowUpStatus.PENDING
 
         # Update status
         action_item.follow_up_status = FollowUpStatus.COMPLETED
-        await adapter.save_learning(action_item)
+        await mock_research_data_adapter.save_learning(action_item)
 
-        retrieved = await adapter.get_learning(action_item.id)
+        retrieved = await mock_research_data_adapter.get_learning(action_item.id)
         assert retrieved is not None
         assert retrieved.follow_up_status == FollowUpStatus.COMPLETED
 
-    async def test_search_learnings(self, adapter: ResearchDataAdapter) -> None:
+    async def test_search_learnings(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """search_learnings should find matching learnings."""
         learning = RetrospectiveLearning(
             id=str(uuid.uuid4()),
@@ -331,24 +320,17 @@ class TestRetrospectiveLearnings:
             description="Pair programming improved code quality significantly.",
         )
 
-        await adapter.save_learning(learning)
+        await mock_research_data_adapter.save_learning(learning)
 
-        result = await adapter.search_learnings("pair programming")
+        result = await mock_research_data_adapter.search_learnings("pair programming")
         assert len(result) == 1
 
-        result = await adapter.search_learnings("nonexistent term xyz")
+        result = await mock_research_data_adapter.search_learnings("nonexistent term xyz")
         assert len(result) == 0
 
 
 class TestHandoverPackages:
     """Tests for handover package storage."""
-
-    @pytest.fixture
-    def adapter(self) -> ResearchDataAdapter:
-        """Create adapter with temporary database."""
-        with TemporaryDirectory() as tmpdir:
-            db_path = Path(tmpdir) / "test.db"
-            yield ResearchDataAdapter(db_path)
 
     @pytest.fixture
     def sample_package(self) -> HandoverPackage:
@@ -367,12 +349,12 @@ class TestHandoverPackages:
         )
 
     async def test_save_and_get_handover(
-        self, adapter: ResearchDataAdapter, sample_package: HandoverPackage
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_package: HandoverPackage
     ) -> None:
         """Handover packages should be saved and retrieved correctly."""
-        await adapter.save_handover(sample_package)
+        await mock_research_data_adapter.save_handover(sample_package)
 
-        retrieved = await adapter.get_handover(sample_package.semester)
+        retrieved = await mock_research_data_adapter.get_handover(sample_package.semester)
 
         assert retrieved is not None
         assert retrieved.id == sample_package.id
@@ -385,22 +367,22 @@ class TestHandoverPackages:
         assert retrieved.human_reviewed is False
 
     async def test_get_handover_by_id(
-        self, adapter: ResearchDataAdapter, sample_package: HandoverPackage
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_package: HandoverPackage
     ) -> None:
         """get_handover_by_id should find package by UUID."""
-        await adapter.save_handover(sample_package)
+        await mock_research_data_adapter.save_handover(sample_package)
 
-        retrieved = await adapter.get_handover_by_id(sample_package.id)
+        retrieved = await mock_research_data_adapter.get_handover_by_id(sample_package.id)
 
         assert retrieved is not None
         assert retrieved.id == sample_package.id
 
-    async def test_get_nonexistent_handover(self, adapter: ResearchDataAdapter) -> None:
+    async def test_get_nonexistent_handover(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Getting a nonexistent handover should return None."""
-        result = await adapter.get_handover("nonexistent-semester")
+        result = await mock_research_data_adapter.get_handover("nonexistent-semester")
         assert result is None
 
-    async def test_list_handovers(self, adapter: ResearchDataAdapter) -> None:
+    async def test_list_handovers(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """list_handovers should return all packages."""
         packages = [
             HandoverPackage(
@@ -413,18 +395,18 @@ class TestHandoverPackages:
         ]
 
         for p in packages:
-            await adapter.save_handover(p)
+            await mock_research_data_adapter.save_handover(p)
 
-        result = await adapter.list_handovers()
+        result = await mock_research_data_adapter.list_handovers()
         assert len(result) == 3
 
     async def test_mark_handover_reviewed(
-        self, adapter: ResearchDataAdapter, sample_package: HandoverPackage
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_package: HandoverPackage
     ) -> None:
         """mark_handover_reviewed should update package."""
-        await adapter.save_handover(sample_package)
+        await mock_research_data_adapter.save_handover(sample_package)
 
-        success = await adapter.mark_handover_reviewed(
+        success = await mock_research_data_adapter.mark_handover_reviewed(
             package_id=sample_package.id,
             approved=True,
             notes="LGTM - approved for handover",
@@ -432,24 +414,24 @@ class TestHandoverPackages:
 
         assert success is True
 
-        retrieved = await adapter.get_handover_by_id(sample_package.id)
+        retrieved = await mock_research_data_adapter.get_handover_by_id(sample_package.id)
         assert retrieved is not None
         assert retrieved.human_reviewed is True
         assert retrieved.reviewer_notes == "LGTM - approved for handover"
 
-    async def test_mark_nonexistent_handover_reviewed(self, adapter: ResearchDataAdapter) -> None:
+    async def test_mark_nonexistent_handover_reviewed(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Marking a nonexistent package should return False."""
-        success = await adapter.mark_handover_reviewed(
+        success = await mock_research_data_adapter.mark_handover_reviewed(
             package_id="nonexistent-id",
             approved=True,
         )
         assert success is False
 
     async def test_semester_uniqueness(
-        self, adapter: ResearchDataAdapter, sample_package: HandoverPackage
+        self, mock_research_data_adapter: ResearchDataAdapter, sample_package: HandoverPackage
     ) -> None:
         """Saving a package with the same semester should update it."""
-        await adapter.save_handover(sample_package)
+        await mock_research_data_adapter.save_handover(sample_package)
 
         # Create a new package with the same semester
         updated_package = HandoverPackage(
@@ -458,9 +440,9 @@ class TestHandoverPackages:
             semester="2025s1",  # Same semester
             executive_summary="Updated summary",
         )
-        await adapter.save_handover(updated_package)
+        await mock_research_data_adapter.save_handover(updated_package)
 
-        retrieved = await adapter.get_handover("2025s1")
+        retrieved = await mock_research_data_adapter.get_handover("2025s1")
         assert retrieved is not None
         # Should have the new ID (replaced)
         assert retrieved.id == updated_package.id
@@ -470,15 +452,9 @@ class TestHandoverPackages:
 class TestKnowledgeIntegration:
     """Integration tests for knowledge capture workflow."""
 
-    @pytest.fixture
-    def adapter(self) -> ResearchDataAdapter:
-        """Create adapter with temporary database."""
-        with TemporaryDirectory() as tmpdir:
-            db_path = Path(tmpdir) / "test.db"
-            yield ResearchDataAdapter(db_path)
-
-    async def test_full_semester_workflow(self, adapter: ResearchDataAdapter) -> None:
+    async def test_full_semester_workflow(self, mock_research_data_adapter: ResearchDataAdapter) -> None:
         """Test capturing decisions, learnings, and generating handover."""
+        adapter = mock_research_data_adapter
         # Capture some decisions
         decision1 = ArchitecturalDecision(
             id=str(uuid.uuid4()),
