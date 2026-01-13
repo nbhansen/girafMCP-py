@@ -48,3 +48,7 @@ htmlcov/
 # ChromaDB local storage
 data/cache/
 chroma_data/
+
+# Document storage (PDFs and extracted markdown)
+data/documents/
+data/extracted/

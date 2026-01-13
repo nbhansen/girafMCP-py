@@ -9,8 +9,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter
+from girafmcp.adapters.markdown_adapter import MarkdownAdapter
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
+from girafmcp.core.services.extraction_service import ExtractionService
 from girafmcp.core.services.guardrails_service import GuardrailsService
+from girafmcp.core.services.ingestion_service import IngestionService
 from girafmcp.core.services.multiframe_service import MultiFrameConfig, MultiFrameService
 from girafmcp.core.services.resilience_service import ResilienceService
 
@@ -27,6 +30,9 @@ class DependencyContainer:
         self._github_adapter: GitHubAdapter | None = None
         self._chroma_adapter: ChromaAdapter | None = None
         self._file_adapter: FileAdapter | None = None
+        self._markdown_adapter: MarkdownAdapter | None = None
+        self._extraction_service: ExtractionService | None = None
+        self._ingestion_service: IngestionService | None = None
         self._guardrails_service: GuardrailsService | None = None
         self._research_data_adapter: ResearchDataAdapter | None = None
         self._resilience_service: ResilienceService | None = None
@@ -57,6 +63,36 @@ class DependencyContainer:
             data_dir = os.environ.get("GIRAF_DATA_DIR")
             self._file_adapter = FileAdapter(data_dir=data_dir)
         return self._file_adapter
+
+    @property
+    def markdown_adapter(self) -> MarkdownAdapter:
+        """Get or create markdown adapter."""
+        if self._markdown_adapter is None:
+            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
+            self._markdown_adapter = MarkdownAdapter(extracted_dir=extracted_dir)
+        return self._markdown_adapter
+
+    @property
+    def extraction_service(self) -> ExtractionService:
+        """Get or create extraction service."""
+        if self._extraction_service is None:
+            documents_dir = Path(os.environ.get("GIRAF_DOCUMENTS_DIR", "data/documents"))
+            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
+            self._extraction_service = ExtractionService(
+                documents_dir=documents_dir,
+                extracted_dir=extracted_dir,
+            )
+        return self._extraction_service
+
+    @property
+    def ingestion_service(self) -> IngestionService:
+        """Get or create ingestion service."""
+        if self._ingestion_service is None:
+            self._ingestion_service = IngestionService(
+                markdown_adapter=self.markdown_adapter,
+                chroma_adapter=self.chroma_adapter,
+            )
+        return self._ingestion_service
 
     @property
     def guardrails_service(self) -> GuardrailsService:

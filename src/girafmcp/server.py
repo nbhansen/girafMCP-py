@@ -323,32 +323,20 @@ async def initialize_static_documents() -> None:
     import logging
 
     logger = logging.getLogger(__name__)
-    documents_dir = os.environ.get("GIRAF_DOCUMENTS_DIR")
-
-    if not documents_dir:
-        logger.info("GIRAF_DOCUMENTS_DIR not set, skipping static document ingestion")
-        return
-
-    from pathlib import Path
-
-    docs_path = Path(documents_dir)
-    if not docs_path.exists():
-        logger.warning(f"Documents directory not found: {documents_dir}")
+    
+    # Check if ingestion is enabled/configured (implicitly via DIR existence)
+    # The container handles defaults, but we can check if the dir exists before running
+    # to avoid noise logs.
+    extracted_dir = container.markdown_adapter.extracted_dir
+    
+    if not extracted_dir or not extracted_dir.exists():
+        logger.info("Extracted documents directory not found or not set. Skipping ingestion.")
         return
 
     try:
-        from girafmcp.adapters.pdf_adapter import PDFAdapter
-        from girafmcp.core.services.ingestion_service import IngestionService
-
-        # Create temporary adapters for ingestion
-        # (We could use the container here, but ingestion is a startup task)
-        pdf_adapter = PDFAdapter(documents_dir=docs_path)
-        ingestion = IngestionService(
-            pdf_adapter=pdf_adapter, 
-            chroma_adapter=container.chroma_adapter
-        )
-
-        result = await ingestion.ingest_all()
+        # We assume extraction is done offline via --extract
+        # So we just run ingestion of existing artifacts
+        result = await container.ingestion_service.ingest_all()
 
         if result.files_processed > 0:
             logger.info(
@@ -379,6 +367,73 @@ async def run_stdio_server() -> None:
             write_stream,
             server.create_initialization_options(),
         )
+
+
+async def run_extraction() -> None:
+    """Run document extraction and exit (no server).
+    
+    Use this to convert PDFs to Markdown artifacts:
+        giraf-mcp --extract
+    """
+    import logging
+    
+    # Configure logging to stdout for CLI usage
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    print(f"Extracting documents...")
+    print(f"Source: {container.extraction_service.documents_dir}")
+    print(f"Target: {container.extraction_service.extracted_dir}")
+
+    try:
+        result = await container.extraction_service.extract_all()
+        
+        print(f"\nExtraction complete:")
+        print(f"  Files processed: {result.files_processed}")
+        print(f"  Files skipped (unchanged): {result.files_skipped}")
+        print(f"  Files failed: {result.files_failed}")
+        
+        if result.errors:
+            print(f"\nErrors ({len(result.errors)}):")
+            for error in result.errors:
+                print(f"  - {error}")
+                
+    except Exception as e:
+        print(f"Error during extraction: {e}")
+        raise
+
+
+async def run_ingestion() -> None:
+    """Run document ingestion from artifacts and exit (no server).
+
+    Use this to ingest extracted documents:
+        giraf-mcp --ingest
+    """
+    import logging
+    
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+
+    print(f"Ingesting documents from artifacts...")
+    print(f"Source: {container.markdown_adapter.extracted_dir}")
+
+    try:
+        result = await container.ingestion_service.ingest_all()
+
+        print(f"\nIngestion complete:")
+        print(f"  Files processed: {result.files_processed}")
+        print(f"  Files skipped (unchanged): {result.files_skipped}")
+        print(f"  Files updated: {result.files_updated}")
+        print(f"  Document chunks created: {result.documents_created}")
+
+        if result.errors:
+            print(f"\nErrors ({len(result.errors)}):")
+            for error in result.errors:
+                print(f"  - {error}")
+
+    except Exception as e:
+        print(f"Error during ingestion: {e}")
+        raise
 
 
 def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
@@ -451,6 +506,7 @@ def main() -> None:
 
     Usage:
         giraf-mcp              # Run with stdio (default, for Claude Desktop)
+        giraf-mcp --ingest     # Ingest documents and exit (run when adding new PDFs)
         giraf-mcp --http       # Run with HTTP/SSE transport
         giraf-mcp --http --port 9000  # Custom port
     """
@@ -467,6 +523,16 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         description="GIRAF MCP Server - Knowledge assistant for the GIRAF project"
+    )
+    parser.add_argument(
+        "--ingest",
+        action="store_true",
+        help="Ingest documents from extracted artifacts and exit (no server)",
+    )
+    parser.add_argument(
+        "--extract",
+        action="store_true",
+        help="Extract Markdown from PDFs and exit (no server)",
     )
     parser.add_argument(
         "--http",
@@ -487,7 +553,12 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.http:
+    if args.extract:
+        asyncio.run(run_extraction())
+    elif args.ingest:
+        # Run ingestion only, then exit
+        asyncio.run(run_ingestion())
+    elif args.http:
         run_http_server(host=args.host, port=args.port)
     else:
         asyncio.run(run_stdio_server())

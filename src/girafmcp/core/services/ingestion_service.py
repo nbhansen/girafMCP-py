@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from girafmcp.adapters.pdf_adapter import PDFAdapter
+from girafmcp.adapters.markdown_adapter import MarkdownAdapter
 from girafmcp.adapters.chroma_adapter import ChromaAdapter
 
 logger = logging.getLogger(__name__)
@@ -31,22 +31,22 @@ class IngestionResult:
 
 
 class IngestionService:
-    """Service for ingesting PDF documents into ChromaDB."""
+    """Service for ingesting extracted Markdown documents into ChromaDB."""
 
     def __init__(
         self,
-        pdf_adapter: PDFAdapter,
+        markdown_adapter: MarkdownAdapter,
         chroma_adapter: ChromaAdapter,
         collection: str = COLLECTION_NAME,
     ):
         """Initialize the ingestion service.
 
         Args:
-            pdf_adapter: Adapter for extracting text from PDFs.
+            markdown_adapter: Adapter for reading extracted Markdown artifacts.
             chroma_adapter: Adapter for storing documents in ChromaDB.
             collection: Collection name for storing documents.
         """
-        self.pdf = pdf_adapter
+        self.markdown = markdown_adapter
         self.chroma = chroma_adapter
         self.collection = collection
         self._ingested_hashes: dict[str, str] = {}  # path -> hash
@@ -96,7 +96,7 @@ class IngestionService:
         return sha256.hexdigest()
 
     async def ingest_all(self) -> IngestionResult:
-        """Scan documents directory and ingest all PDFs.
+        """Scan extracted directory and ingest all Markdown files.
 
         Returns:
             IngestionResult with counts of processed files.
@@ -104,12 +104,12 @@ class IngestionService:
         await self._ensure_initialized()
 
         result = IngestionResult()
-        pdf_paths = await self.pdf.scan_directory()
+        md_paths = await self.markdown.scan_directory()
 
-        for pdf_path in pdf_paths:
+        for md_path in md_paths:
             try:
-                path_str = str(pdf_path)
-                current_hash = self._compute_file_hash(pdf_path)
+                path_str = str(md_path)
+                current_hash = self._compute_file_hash(md_path)
 
                 # Check if already ingested
                 previous_hash = self._ingested_hashes.get(path_str)
@@ -120,7 +120,7 @@ class IngestionService:
                     continue
 
                 # Ingest the file
-                docs_created = await self.ingest_file(pdf_path)
+                docs_created = await self.ingest_file(md_path)
 
                 if docs_created > 0:
                     result.files_processed += 1
@@ -134,7 +134,7 @@ class IngestionService:
                     self._ingested_hashes[path_str] = current_hash
 
             except Exception as e:
-                error_msg = f"Error ingesting {pdf_path}: {e}"
+                error_msg = f"Error ingesting {md_path}: {e}"
                 logger.error(error_msg)
                 result.errors.append(error_msg)
 
@@ -144,10 +144,10 @@ class IngestionService:
         return result
 
     async def ingest_file(self, path: Path) -> int:
-        """Ingest a single PDF file.
+        """Ingest a single Markdown file.
 
         Args:
-            path: Path to the PDF file.
+            path: Path to the Markdown file.
 
         Returns:
             Number of document chunks created.
@@ -157,8 +157,8 @@ class IngestionService:
         # Delete any existing documents from this file
         await self._delete_file_documents(path)
 
-        # Extract documents from PDF
-        documents = await self.pdf.extract_documents(path)
+        # Extract documents from Markdown
+        documents = await self.markdown.extract_documents(path)
 
         if not documents:
             return 0

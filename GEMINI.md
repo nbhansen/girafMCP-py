@@ -1,134 +1,114 @@
-# GIRAF MCP Server
+# GIRAF MCP Server (`girafMCP-py`)
 
 ## Project Overview
 
-**GIRAF MCP Server** (`girafMCP-py`) is an AI-powered knowledge assistant designed for the GIRAF project at Aalborg University. It serves as a bridge between AI assistants (like Claude) and the GIRAF ecosystem, enabling easy access to codebases, documentation, domain knowledge, and project context. This helps new students onboard and contribute effectively to building accessible apps for children with autism.
+`girafMCP-py` is a Python-based **Model Context Protocol (MCP) server** designed to act as an AI-powered knowledge assistant for the **GIRAF project** at Aalborg University. GIRAF is an app environment helping children with autism structure their daily lives.
 
-### Key Technologies
+This server connects AI agents (like Gemini, Claude) to the GIRAF project's ecosystem, providing access to:
+*   **Codebase:** Search and retrieval from GitHub repositories.
+*   **Documentation:** Live search of the project Wiki and semantic search of static PDF documents (handover reports, research papers).
+*   **Domain Knowledge:** Contextual information about autism, visual schedules, and accessibility.
+*   **Research Features:** Experimental features for studying AI-assisted learning, including guardrails, resilience testing, and cross-disciplinary framing.
+
+The project follows a **Hexagonal Architecture** pattern to separate domain logic from external tools and adapters.
+
+## Architecture
+
+*   **Core (`src/girafmcp/core/`):** Contains business logic, interfaces (ports), domain types, and the Dependency Injection container.
+*   **Adapters (`src/girafmcp/adapters/`):** Implementations of ports for external systems (GitHub API, ChromaDB, File System, SQLite).
+*   **Tools (`src/girafmcp/tools/`):** MCP tool definitions and handlers, organized by domain (search, github, knowledge, etc.).
+*   **Middleware (`src/girafmcp/middleware/`):** Intercepts tool calls for logging, guardrails, and response adaptation.
+*   **Server (`src/girafmcp/server.py`):** The application entry point, wiring everything together using `mcp.server`.
+
+## Key Technologies
+
 *   **Language:** Python 3.11+
-*   **Protocol:** [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
-*   **Vector Store:** ChromaDB (for semantic search)
-*   **PDF Processing:** pdfplumber
-*   **Networking:** httpx
-
-### Architecture
-The project follows a **Hexagonal Architecture** with a central **Dependency Injection** container:
-*   **Server (`src/girafmcp/server.py`):** Entry point, handles tool aggregation and dispatch.
-*   **Container (`src/girafmcp/core/container.py`):** Manages the lifecycle of adapters and services (DI).
-*   **Tools (`src/girafmcp/tools/`):** Categorized tool handlers. Each module exports its own `Tool` definitions via `list_tools()`.
-*   **Middleware (`src/girafmcp/middleware/`):** Request/response interceptors for logging, guardrails, and discipline framing.
-*   **Core (`src/girafmcp/core/`):** Business logic, services (Guardrails, Resilience, MultiFrame), ports (interfaces), and domain types.
-*   **Adapters (`src/girafmcp/adapters/`):** Implementations for external systems (GitHub, ChromaDB, File System, SQLite).
-*   **Data (`data/`):** Stores domain knowledge (Markdown), project context (YAML), and research configurations.
+*   **MCP SDK:** `mcp` library for Model Context Protocol implementation.
+*   **Vector Database:** `chromadb` for semantic search of documentation.
+*   **PDF Extraction:** `pymupdf4llm` for high-quality Markdown extraction and `pymupdf-layout` for layout analysis.
+*   **Database:** `aiosqlite` for structured data (query logs, knowledge capture).
+*   **Web Server:** `starlette` / `uvicorn` (for HTTP mode).
+*   **Testing:** `pytest`, `pytest-cov`.
+*   **Quality:** `ruff` (linting/formatting), `mypy` (static typing).
 
 ## Building and Running
 
 ### Prerequisites
 *   Python 3.11 or higher
-*   A GitHub Personal Access Token (for API access)
+*   `pip`
+*   Git
 
-### Installation
-1.  **Clone and setup virtual environment:**
+### Setup
+
+1.  **Clone and Navigate:**
+    ```bash
+    # (Assuming you are already in the directory)
+    cd girafMCP-py
+    ```
+
+2.  **Create Virtual Environment:**
     ```bash
     python -m venv .venv
     source .venv/bin/activate
-    pip install -e ".[dev]"
-    ```
-2.  **Configuration:**
-    Create a `.env` file based on `.env.example`:
-    ```bash
-    GITHUB_TOKEN=ghp_...
-    # Optional: Path to directory containing PDFs for semantic search
-    GIRAF_DOCUMENTS_DIR=/path/to/documents
     ```
 
-### Running the Server
-*   **Standard Mode (stdio):**
+3.  **Install Dependencies:**
+    ```bash
+    pip install -e ".[dev]"
+    ```
+    *   `.[dev]` installs development tools (pytest, ruff, mypy).
+    *   `.[http]` installs HTTP server dependencies.
+
+4.  **Configuration:**
+    Create a `.env` file (copy from `.env.example`) and configure:
+    *   `GITHUB_TOKEN`: Required for GitHub tools.
+    *   `GIRAF_DOCUMENTS_DIR`: Path to PDF documents for ingestion.
+    *   Research feature flags (optional): `GIRAF_GUARDRAILS_ENABLED`, `GIRAF_RESILIENCE_ENABLED`, etc.
+
+### Execution
+
+*   **Standard Mode (Stdio):**
+    Used by MCP clients (like Claude Desktop) to communicate via standard input/output.
     ```bash
     giraf-mcp
     ```
-*   **HTTP Mode (for remote/shared access):**
+
+*   **HTTP Mode:**
+    Runs a web server (SSE/POST) for remote access.
     ```bash
-    pip install -e ".[http]"
     giraf-mcp --http --port 8000
     ```
-*   **Docker Mode:**
-    ```bash
-    # Build the image
-    docker build -t giraf-mcp .
 
-    # Run the container (HTTP mode)
-    docker run -p 8000:8000 \
-      -e GITHUB_TOKEN=your_token \
-      -v $(pwd)/data:/app/data \
-      -v $(pwd)/chroma_data:/app/chroma_data \
-      giraf-mcp
+*   **Document Ingestion:**
+    Ingests PDFs from `GIRAF_DOCUMENTS_DIR` into the vector database.
+    ```bash
+    giraf-mcp --ingest
     ```
 
-### Testing
-*   **Run all tests:**
-    ```bash
-    pytest
-    ```
-*   **Run with coverage:**
-    ```bash
-    pytest --cov=girafmcp
-    ```
+### Docker
 
-### Linting and Type Checking
-*   **Linting:**
-    ```bash
-    ruff check src/
-    ```
-*   **Formatting:**
-    ```bash
-    ruff format src/
-    ```
-*   **Type Checking:**
-    ```bash
-    mypy src/
-    ```
+```bash
+docker build -t giraf-mcp .
+docker run -p 8000:8000 --env-file .env -v $(pwd)/data:/app/data giraf-mcp
+```
 
 ## Development Conventions
 
-### Code Structure
-*   **`src/girafmcp/`**: Main source code.
-    *   `adapters/`: Implementations for external interactions (GitHub, Chroma, etc.).
-    *   `core/`: Application core, including ports and services.
-    *   `middleware/`: Request/response interceptors.
-    *   `tools/`: Tool definitions and handlers by category.
-*   **`data/`**: Static data files.
-    *   `domain/`: Markdown files explaining autism and accessibility concepts.
-    *   `context.yaml`: Current semester focus and priorities.
-    *   `personas.yaml`: User persona definitions.
-*   **`tests/`**: Pytest-based test suite.
+*   **Code Style:** Adhere to `ruff` formatting and linting rules.
+    *   Run check: `ruff check src/`
+    *   Format: `ruff format src/`
+*   **Type Safety:** Strict type checking with `mypy` is enforced.
+    *   Run check: `mypy src/`
+*   **Testing:** Comprehensive test suite using `pytest`.
+    *   Run tests: `pytest`
+    *   Coverage: `pytest --cov=girafmcp`
+*   **Dependency Injection:** Use `src/girafmcp/core/container.py` for managing dependencies. Avoid global state where possible, except for the container instance itself.
+*   **Tool Definition:** New tools should be defined in `src/girafmcp/tools/` and registered in `server.py`.
 
-### Contribution Guidelines
-*   **Domain Knowledge:** Add Markdown files to `data/domain/` with clear H1/H2 headings.
-*   **Project Context:** Update `data/context.yaml` at the start of semesters or when priorities change.
-*   **Personas:** Add new personas to `data/personas.yaml` following the existing format.
-*   **Code:**
-    *   Follow the hexagonal architecture.
-    *   Ensure all tests pass (`pytest`).
-    *   Adhere to linting standards (`ruff`).
-    *   Add new tools by defining them in a relevant `src/girafmcp/tools/` module and wiring them in `server.py`.
-    *   Use the `DependencyContainer` for managing shared state/adapters.
+## Directory Structure
 
-## Key Files
-*   `README.md`: General project introduction and usage.
-*   `CONTRIBUTING.md`: Detailed guide for contributors.
-*   `pyproject.toml`: Dependency and build configuration.
-*   `src/girafmcp/server.py`: Entry point for the MCP server.
-*   `data/context.yaml`: Dynamic project context.
-
-## Improvement Plan
-
-The following improvements are planned to enhance the project's quality and deployability:
-
-1.  **Refactor `server.py` (Completed):** Modularize tool handlers into `src/girafmcp/tools/` to prevent a "God Object" anti-pattern and improve maintainability.
-2.  **Add CI/CD Pipeline (Completed):** Implement GitHub Actions workflows (`.github/workflows/ci.yml`) to automate:
-    *   Running tests (`pytest`)
-    *   Linting code (`ruff check`)
-    *   Type checking (`mypy`)
-3.  **Containerization (Completed):** Create a `Dockerfile` to containerize the application, simplifying deployment for the HTTP server mode.
-4.  **Consistent Logging (Completed):** Integrate the standard `logging` module throughout tool handlers to replace simple error strings with structured logs for better debugging.
+*   `src/girafmcp/`: Source code.
+*   `data/`: Configuration files (`personas.yaml`, `context.yaml`, `guardrails.yaml`) and domain knowledge (Markdown).
+*   `tests/`: Unit and integration tests.
+*   `chroma_data/`: Persisted Vector DB data.
+*   `docs/`: Project documentation.
