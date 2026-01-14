@@ -1,7 +1,6 @@
 """Context, domain knowledge, and persona tool handlers."""
 
 import logging
-from typing import Any
 from mcp.types import TextContent, Tool
 from girafmcp.adapters import FileAdapter
 

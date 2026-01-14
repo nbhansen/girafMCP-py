@@ -406,7 +406,7 @@ class ResearchDataAdapter:
 
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(query, params)
-            rows = await cursor.fetchall()
+            rows = list(await cursor.fetchall())
 
             # Write CSV
             output_path.parent.mkdir(parents=True, exist_ok=True)

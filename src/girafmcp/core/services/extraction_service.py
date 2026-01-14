@@ -4,16 +4,12 @@ Handles the conversion of raw PDF documents into structured Markdown files
 stored in a separate 'extracted' directory. Preserves metadata via YAML frontmatter.
 """
 
-import hashlib
 import logging
 import multiprocessing
-import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
-import pymupdf4llm
+import pymupdf4llm  # type: ignore[import-untyped]
 import yaml
 
 logger = logging.getLogger(__name__)

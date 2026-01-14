@@ -5,7 +5,7 @@ Tools for session management, guardrails, and research data export.
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from mcp.types import TextContent, Tool
 
@@ -177,7 +177,7 @@ async def handle_set_session_metadata(
 async def handle_request_more_detail(
     session: SessionState,
     guardrails_service: GuardrailsService,
-    dispatch_fn,
+    dispatch_fn: Callable[[str, dict[str, Any]], Awaitable[list[TextContent]]],
 ) -> list[TextContent]:
     """Request more detailed guidance on the previous query.
 
@@ -203,8 +203,6 @@ async def handle_request_more_detail(
     max_tier = guardrails_service.config.max_tier
     new_tier = session.advance_tier(max_tier)
     tier_config = guardrails_service.config.get_tier_config(new_tier)
-
-    tier_name = tier_config.name if tier_config else f"tier {new_tier}"
 
     # Re-run the previous query with new tier
     # The middleware will use the updated session.guardrail_tier

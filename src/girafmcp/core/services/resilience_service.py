@@ -10,11 +10,11 @@ periods with proper ethical oversight.
 import logging
 import random
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -113,7 +113,7 @@ class ResilienceConfig:
     @property
     def enabled(self) -> bool:
         """Whether resilience testing is globally enabled."""
-        return self._config.get("enabled", False)
+        return cast(bool, self._config.get("enabled", False))
 
     @property
     def mode(self) -> ResilienceMode:
@@ -127,52 +127,52 @@ class ResilienceConfig:
     @property
     def error_injection_rate(self) -> float:
         """Probability of injecting an error in degraded mode."""
-        return self._config.get("degraded_mode", {}).get("error_injection_rate", 0.3)
+        return cast(float, self._config.get("degraded_mode", {}).get("error_injection_rate", 0.3))
 
     @property
     def error_types(self) -> list[dict[str, Any]]:
         """Configured error types with weights."""
-        return self._config.get("degraded_mode", {}).get("error_types", [])
+        return cast(list[dict[str, Any]], self._config.get("degraded_mode", {}).get("error_types", []))
 
     @property
     def difficulty_distribution(self) -> dict[str, float]:
         """Distribution of error difficulties."""
-        return self._config.get("degraded_mode", {}).get("difficulty_distribution", {
+        return cast(dict[str, float], self._config.get("degraded_mode", {}).get("difficulty_distribution", {
             "obvious": 0.2,
             "moderate": 0.5,
             "subtle": 0.3,
-        })
+        }))
 
     @property
     def unavailable_message(self) -> str:
         """Message to show when AI is unavailable."""
-        return self._config.get("unavailable_mode", {}).get(
+        return cast(str, self._config.get("unavailable_mode", {}).get(
             "message",
             "The AI assistant is temporarily unavailable. "
             "Please continue working using documentation and team discussion."
-        )
+        ))
 
     @property
     def allowed_tools_when_unavailable(self) -> list[str]:
         """Tools that remain available during unavailable mode."""
-        return self._config.get("unavailable_mode", {}).get("allowed_tools", [
+        return cast(list[str], self._config.get("unavailable_mode", {}).get("allowed_tools", [
             "search_documentation",
             "search_knowledge",
             "get_project_context",
-        ])
+        ]))
 
     @property
     def delay_seconds(self) -> int:
         """Delay in seconds for delayed mode."""
-        return self._config.get("delayed_mode", {}).get("delay_seconds", 60)
+        return cast(int, self._config.get("delayed_mode", {}).get("delay_seconds", 60))
 
     @property
     def delay_message(self) -> str:
         """Message to show during delayed mode."""
-        return self._config.get("delayed_mode", {}).get(
+        return cast(str, self._config.get("delayed_mode", {}).get(
             "message_during_delay",
             "Processing your request... This may take a moment."
-        )
+        ))
 
     def get_team_mode(self, team_id: str | None) -> ResilienceMode:
         """Get resilience mode for a specific team.

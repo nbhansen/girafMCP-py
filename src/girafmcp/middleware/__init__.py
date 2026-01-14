@@ -16,7 +16,7 @@ Example usage:
 
 import logging
 import time
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 
 from mcp.types import TextContent
 
@@ -27,6 +27,7 @@ from .base import Middleware, NextMiddleware, ToolContext
 __all__ = [
     "Middleware",
     "MiddlewareChain",
+    "NextMiddleware",
     "ToolContext",
     "create_context",
 ]
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 # Type alias for the final dispatch function
-DispatchFn = Callable[[str, dict], Awaitable[list[TextContent]]]
+DispatchFn = Callable[[str, dict[str, Any]], Awaitable[list[TextContent]]]
 
 
 class MiddlewareChain:
@@ -154,7 +155,7 @@ class MiddlewareChain:
 
 def create_context(
     name: str,
-    arguments: dict,
+    arguments: dict[str, Any],
     session: SessionState | None = None,
 ) -> ToolContext:
     """Create a ToolContext for a tool invocation.

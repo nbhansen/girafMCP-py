@@ -9,6 +9,7 @@ import logging
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from mcp.types import TextContent
 
@@ -176,7 +177,7 @@ class LoggingMiddleware(Middleware):
 
         return None
 
-    def _sanitize_arguments(self, arguments: dict) -> dict:
+    def _sanitize_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Remove or truncate sensitive/large data from arguments.
 
         Args:

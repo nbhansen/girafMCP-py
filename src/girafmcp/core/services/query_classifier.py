@@ -5,7 +5,7 @@ based on pattern matching in query text.
 """
 
 import re
-from typing import Any
+from typing import Any, Literal, cast
 
 from girafmcp.core.types import MetaSkillIndicators, QueryType
 
@@ -267,8 +267,9 @@ def detect_meta_skills(query_text: str | None) -> MetaSkillIndicators:
     return indicators
 
 
-def _assess_error_quality(query_lower: str) -> str:
+def _assess_error_quality(query_lower: str) -> Literal["none", "vague", "specific", "diagnostic"]:
     """Assess the quality of error description in query."""
+    ErrorQuality = Literal["none", "vague", "specific", "diagnostic"]
     # Check from most to least specific
     for quality, patterns in [
         ("diagnostic", ERROR_QUALITY_PATTERNS["diagnostic"]),
@@ -277,7 +278,7 @@ def _assess_error_quality(query_lower: str) -> str:
     ]:
         for pattern in patterns:
             if re.search(pattern, query_lower):
-                return quality
+                return cast(ErrorQuality, quality)
 
     return "none"
 

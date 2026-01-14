@@ -6,7 +6,7 @@ and domain knowledge to help students working on the GIRAF project.
 
 import asyncio
 import os
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, cast
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -312,7 +312,7 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextConte
 
     This is used by request_more_detail to re-run the previous query.
     """
-    return await call_tool(name, arguments)
+    return cast(list[TextContent], await call_tool(name, arguments))
 
 
 # === Startup Initialization ===
@@ -379,16 +379,15 @@ async def run_extraction() -> None:
     
     # Configure logging to stdout for CLI usage
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
 
-    print(f"Extracting documents...")
+    print("Extracting documents...")
     print(f"Source: {container.extraction_service.documents_dir}")
     print(f"Target: {container.extraction_service.extracted_dir}")
 
     try:
         result = await container.extraction_service.extract_all()
         
-        print(f"\nExtraction complete:")
+        print("\nExtraction complete:")
         print(f"  Files processed: {result.files_processed}")
         print(f"  Files skipped (unchanged): {result.files_skipped}")
         print(f"  Files failed: {result.files_failed}")
@@ -414,13 +413,13 @@ async def run_ingestion() -> None:
     # Configure logging
     logging.basicConfig(level=logging.INFO)
 
-    print(f"Ingesting documents from artifacts...")
+    print("Ingesting documents from artifacts...")
     print(f"Source: {container.markdown_adapter.extracted_dir}")
 
     try:
         result = await container.ingestion_service.ingest_all()
 
-        print(f"\nIngestion complete:")
+        print("\nIngestion complete:")
         print(f"  Files processed: {result.files_processed}")
         print(f"  Files skipped (unchanged): {result.files_skipped}")
         print(f"  Files updated: {result.files_updated}")

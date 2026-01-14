@@ -1,7 +1,6 @@
 """Search-related tool handlers using vector store."""
 
 import logging
-from typing import Any
 from mcp.types import TextContent, Tool
 from girafmcp.adapters import ChromaAdapter
 

@@ -5,7 +5,6 @@ to configure resilience testing scenarios.
 """
 
 import logging
-from typing import Any
 
 from mcp.types import TextContent, Tool
 
@@ -307,8 +306,8 @@ async def handle_get_resilience_metrics(
     lines.extend([
         "## Error Detection Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total Injected | {metrics['total_injected']} |",
         f"| Detected | {metrics['detected']} |",
         f"| Detection Rate | {metrics['detection_rate']:.1%} |",

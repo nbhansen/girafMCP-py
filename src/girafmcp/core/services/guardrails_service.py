@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -94,7 +94,7 @@ class GuardrailsConfig:
     @property
     def enabled(self) -> bool:
         """Check if guardrails are enabled globally."""
-        return self._config.get("enabled", True)
+        return cast(bool, self._config.get("enabled", True))
 
     @property
     def mode(self) -> GuardrailMode:
@@ -196,34 +196,34 @@ class GuardrailsConfig:
         """Get the maximum tier number."""
         tiers = self._config.get("tiers", {})
         if tiers:
-            return max(tiers.keys())
+            return cast(int, max(tiers.keys()))
         return 4
 
     @property
     def cooldown_delay_seconds(self) -> int:
         """Get cooldown delay in seconds."""
-        return self._config.get("cooldown", {}).get("delay_seconds", 30)
+        return cast(int, self._config.get("cooldown", {}).get("delay_seconds", 30))
 
     @property
     def cooldown_reflection_prompt(self) -> str:
         """Get the cooldown reflection prompt template."""
-        return self._config.get("cooldown", {}).get(
+        return cast(str, self._config.get("cooldown", {}).get(
             "reflection_prompt",
             "Please wait {remaining_seconds} seconds before receiving the full solution.",
-        )
+        ))
 
     @property
     def attempt_first_prompt(self) -> str:
         """Get the attempt-first prompt for prompt mode."""
-        return self._config.get("attempt_first", {}).get(
+        return cast(str, self._config.get("attempt_first", {}).get(
             "prompt",
             "What have you tried so far?",
-        )
+        ))
 
     @property
     def bypass_indicators(self) -> list[str]:
         """Get list of phrases that bypass the attempt-first prompt."""
-        return self._config.get("attempt_first", {}).get("bypass_indicators", [])
+        return cast(list[str], self._config.get("attempt_first", {}).get("bypass_indicators", []))
 
     def has_bypass_indicator(self, query_text: str | None) -> bool:
         """Check if query text contains a bypass indicator.

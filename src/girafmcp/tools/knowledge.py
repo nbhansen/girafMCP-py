@@ -7,7 +7,6 @@ and generating handover packages.
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from mcp.types import TextContent, Tool
 
@@ -609,10 +608,10 @@ async def handle_generate_handover_summary(
         accepted_decisions = [d for d in decisions if d.status == DecisionStatus.ACCEPTED]
 
         # Separate learnings by category
-        went_well = [l for l in learnings if l.category == LearningCategory.WENT_WELL]
-        to_improve = [l for l in learnings if l.category == LearningCategory.TO_IMPROVE]
-        action_items = [l for l in learnings if l.category == LearningCategory.ACTION_ITEM]
-        insights = [l for l in learnings if l.category == LearningCategory.INSIGHT]
+        went_well = [learn for learn in learnings if learn.category == LearningCategory.WENT_WELL]
+        to_improve = [learn for learn in learnings if learn.category == LearningCategory.TO_IMPROVE]
+        action_items = [learn for learn in learnings if learn.category == LearningCategory.ACTION_ITEM]
+        insights = [learn for learn in learnings if learn.category == LearningCategory.INSIGHT]
 
         # Generate executive summary
         summary_parts = [
@@ -631,7 +630,7 @@ async def handle_generate_handover_summary(
             executive_summary += f"\n\n{additional_notes}"
 
         # Identify known issues from action items and to_improve
-        known_issues = [l.description for l in to_improve[:5]]
+        known_issues = [learn.description for learn in to_improve[:5]]
         known_issues.extend([a.description for a in action_items if a.follow_up_status == FollowUpStatus.PENDING][:3])
 
         # Generate priorities
@@ -650,7 +649,7 @@ async def handle_generate_handover_summary(
             semester=semester,
             executive_summary=executive_summary,
             key_decisions=[d.id for d in accepted_decisions[:10]],  # Top 10
-            lessons_learned=[l.id for l in learnings[:20]],  # Top 20
+            lessons_learned=[learn.id for learn in learnings[:20]],  # Top 20
             known_issues=known_issues,
             recommended_priorities=priorities,
             human_reviewed=False,
@@ -681,14 +680,14 @@ async def handle_generate_handover_summary(
 
         output.append("\n## Lessons Learned\n")
         output.append("### What Went Well")
-        for l in went_well[:5]:
-            output.append(f"- {l.description}")
+        for learn in went_well[:5]:
+            output.append(f"- {learn.description}")
         output.append("\n### Areas to Improve")
-        for l in to_improve[:5]:
-            output.append(f"- {l.description}")
+        for learn in to_improve[:5]:
+            output.append(f"- {learn.description}")
         output.append("\n### Key Insights")
-        for l in insights[:5]:
-            output.append(f"- {l.description}")
+        for learn in insights[:5]:
+            output.append(f"- {learn.description}")
 
         output.append("\n## Known Issues\n")
         for issue in package.known_issues:
@@ -800,7 +799,7 @@ async def handle_get_handover(
             f"\n*Generated: {package.generated_at.isoformat()}*",
             f"\n*Status: {status}*",
             f"\n## Executive Summary\n\n{package.executive_summary}",
-            f"\n## Statistics\n",
+            "\n## Statistics\n",
             f"- Key Decisions: {len(package.key_decisions)}",
             f"- Lessons Learned: {len(package.lessons_learned)}",
             f"- Known Issues: {len(package.known_issues)}",

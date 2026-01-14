@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -151,12 +151,12 @@ class MultiFrameConfig:
         env_enabled = os.environ.get("GIRAF_DISCIPLINE_ENABLED", "").lower()
         if env_enabled:
             return env_enabled in ("true", "1", "yes")
-        return self._config.get("enabled", False)
+        return cast(bool, self._config.get("enabled", False))
 
     @property
     def default_discipline(self) -> str:
         """Get default discipline."""
-        return self._config.get("default_discipline", "cs")
+        return cast(str, self._config.get("default_discipline", "cs"))
 
     def get_profile(self, discipline: str) -> DisciplineProfile | None:
         """Get profile for a discipline."""
@@ -331,7 +331,7 @@ class MultiFrameService:
             pattern = rf"\b{re.escape(term)}\b"
             if re.search(pattern, adapted, re.IGNORECASE):
                 # Add translation note after first occurrence
-                def add_note(match: re.Match) -> str:
+                def add_note(match: re.Match[str]) -> str:
                     return f"{match.group(0)} (*{translation}*)"
 
                 adapted = re.sub(
