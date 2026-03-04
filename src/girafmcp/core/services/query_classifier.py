@@ -222,7 +222,7 @@ def _classify_by_tool(tool_name: str) -> QueryType:
         "search_static_documents",
     ]
     context_tools = [
-        "get_project_context",
+        "get_semester_context",
         "get_persona",
     ]
 

@@ -42,7 +42,7 @@ exempt_tools:
   - list_domain_topics
   - list_personas
   - list_static_documents
-  - get_project_context
+  - get_semester_context
   - get_permalink
   - get_persona
   - set_session_metadata

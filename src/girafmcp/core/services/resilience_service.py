@@ -158,7 +158,7 @@ class ResilienceConfig:
         return cast(list[str], self._config.get("unavailable_mode", {}).get("allowed_tools", [
             "search_documentation",
             "search_knowledge",
-            "get_project_context",
+            "get_semester_context",
         ]))
 
     @property

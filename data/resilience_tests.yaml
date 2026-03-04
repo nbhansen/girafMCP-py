@@ -63,13 +63,13 @@ unavailable_mode:
     Available resources:
     - Project documentation (search_documentation)
     - Past architectural decisions (search_knowledge)
-    - Project context (get_project_context)
+    - Project context (get_semester_context)
 
   # Tools that remain available even in unavailable mode
   allowed_tools:
     - search_documentation
     - search_knowledge
-    - get_project_context
+    - get_semester_context
     - list_wiki_pages
     - search_wiki
 

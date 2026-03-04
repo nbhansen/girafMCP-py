@@ -11,8 +11,8 @@ def list_tools() -> list[Tool]:
     """Return tool definitions for context tools."""
     return [
         Tool(
-            name="get_project_context",
-            description="Get the current project context including semester focus, priorities, known issues, and recent decisions.",
+            name="get_semester_context",
+            description="Get the current semester context from local YAML configuration, including semester focus, priorities, known issues, and recent decisions. This reads local project configuration, not GitHub Projects.",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -73,11 +73,11 @@ def list_tools() -> list[Tool]:
     ]
 
 
-async def handle_get_project_context(adapter: FileAdapter) -> list[TextContent]:
-    """Get the current project context."""
+async def handle_get_semester_context(adapter: FileAdapter) -> list[TextContent]:
+    """Get the current semester context from local YAML."""
     try:
         context = adapter.get_context()
-        lines = ["# Project Context", ""]
+        lines = ["# Semester Context", ""]
         
         for key, value in context.items():
             lines.append(f"## {key.replace('_', ' ').title()}")

@@ -37,7 +37,7 @@ class TestGuardrailsConfig:
                 "team_c": {"enabled": True, "mode": "cooldown"},
             },
             "guarded_tools": ["search_code", "get_file"],
-            "exempt_tools": ["list_repositories", "get_project_context"],
+            "exempt_tools": ["list_repositories", "get_semester_context"],
             "tiers": {
                 1: {
                     "name": "hint",
@@ -128,7 +128,7 @@ class TestGuardrailsConfig:
 
         # Exempt tools
         assert config.should_guard("list_repositories") is False
-        assert config.should_guard("get_project_context") is False
+        assert config.should_guard("get_semester_context") is False
 
         # Unknown tool - not in guarded list
         assert config.should_guard("unknown_tool") is False

@@ -36,7 +36,7 @@ def unavailable_config() -> dict:
         "mode": "unavailable",
         "unavailable_mode": {
             "message": "AI is temporarily unavailable.",
-            "allowed_tools": ["search_documentation", "get_project_context"],
+            "allowed_tools": ["search_documentation", "get_semester_context"],
         },
     }
 

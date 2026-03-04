@@ -59,7 +59,7 @@ class TestResilienceConfig:
             },
             "unavailable_mode": {
                 "message": "AI is unavailable",
-                "allowed_tools": ["search_documentation", "get_project_context"],
+                "allowed_tools": ["search_documentation", "get_semester_context"],
             },
             "delayed_mode": {
                 "delay_seconds": 30,
@@ -108,7 +108,7 @@ class TestResilienceConfig:
         config = ResilienceConfig(config_file)
         allowed = config.allowed_tools_when_unavailable
         assert "search_documentation" in allowed
-        assert "get_project_context" in allowed
+        assert "get_semester_context" in allowed
 
     def test_unavailable_message(self, config_file: Path) -> None:
         """Unavailable message should be loaded."""

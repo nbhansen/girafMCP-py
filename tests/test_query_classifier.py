@@ -79,7 +79,7 @@ class TestClassifyQueryType:
         assert classify_query_type("list_repositories", {}) == QueryType.NAVIGATION
         assert classify_query_type("list_wiki_pages", {}) == QueryType.NAVIGATION
         assert classify_query_type("get_file", {"path": "src/main.py"}) == QueryType.NAVIGATION
-        assert classify_query_type("get_project_context", {}) == QueryType.EXPLANATION
+        assert classify_query_type("get_semester_context", {}) == QueryType.EXPLANATION
         assert classify_query_type("unknown_tool", {}) == QueryType.UNKNOWN
 
 
