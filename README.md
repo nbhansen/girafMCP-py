@@ -124,11 +124,19 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 ### Context & Knowledge
 | Tool | Description |
 |------|-------------|
-| `get_project_context` | Current semester focus and priorities |
+| `get_semester_context` | Current semester focus and priorities |
 | `search_domain_knowledge` | Search autism/accessibility knowledge |
 | `list_domain_topics` | List available domain topics |
 | `list_personas` | List available user personas |
 | `get_persona` | Get persona details for tailored responses |
+
+### GitHub Projects
+| Tool | Description |
+|------|-------------|
+| `list_github_projects` | List all GitHub Projects V2 boards |
+| `get_github_project` | Get details about a specific project |
+| `list_project_items` | List items in a project with optional status filter |
+| `check_github_projects_access` | Verify GitHub token has project scope |
 
 ### Research Features
 
