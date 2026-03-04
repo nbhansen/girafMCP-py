@@ -29,7 +29,7 @@
 |---------|-------------|
 | **Code Search** | Search across active GIRAF repositories with GitHub permalinks |
 | **Wiki Search** | Live search through GIRAF wiki documentation |
-| **Static Documents** | Semantic search over PDFs, handover reports, and research papers |
+| **Static Documents** | Keyword search over handover reports and research papers |
 | **Domain Knowledge** | Background on autism, visual schedules, and accessibility |
 | **Project Context** | Current semester focus, known issues, recent decisions |
 | **Personas** | Adapts responses for CS students, pedagogy students, supervisors |
@@ -56,8 +56,8 @@ Create a `.env` file:
 # Required: GitHub token for API access
 GITHUB_TOKEN=ghp_...
 
-# Optional: Directory containing PDFs for semantic search
-GIRAF_DOCUMENTS_DIR=/path/to/documents
+# Optional: Directory containing extracted markdown documents
+# GIRAF_EXTRACTED_DIR=data/extracted
 
 # Research features (all disabled by default)
 GIRAF_GUARDRAILS_ENABLED=false
@@ -80,7 +80,6 @@ docker build -t giraf-mcp .
 docker run -p 8000:8000 \
   -e GITHUB_TOKEN=your_token \
   -v $(pwd)/data:/app/data \
-  -v $(pwd)/chroma_data:/app/chroma_data \
   giraf-mcp
 ```
 
@@ -96,7 +95,7 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
       "cwd": "/path/to/girafMCP-py",
       "env": {
         "GITHUB_TOKEN": "ghp_...",
-        "GIRAF_DOCUMENTS_DIR": "/path/to/documents"
+        "GIRAF_EXTRACTED_DIR": "data/extracted"
       }
     }
   }
@@ -118,9 +117,9 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 |------|-------------|
 | `search_wiki` | Live search GIRAF wiki (excludes legacy content) |
 | `list_wiki_pages` | List all current wiki pages by section |
-| `search_documentation` | Semantic search in indexed docs |
-| `search_static_documents` | Search ingested PDFs with page citations |
-| `list_static_documents` | List all ingested PDFs with tags |
+| `search_documentation` | Keyword search in extracted documents |
+| `search_static_documents` | Search extracted documents with tag filtering |
+| `list_static_documents` | List all extracted documents with tags |
 
 ### Context & Knowledge
 | Tool | Description |
@@ -179,22 +178,7 @@ Add to `~/.config/Claude/claude_desktop_config.json`:
 
 ## Static Document Search
 
-Point `GIRAF_DOCUMENTS_DIR` to a folder with PDFs. The server auto-ingests them on startup.
-
-```
-/home/user/giraf-documents/
-├── handover/
-│   ├── _meta.yaml           # Tags all PDFs in folder
-│   ├── FoodPlanner-SW4.pdf
-│   └── VTA-IxD1.pdf
-└── research/
-    └── autism-study.pdf
-```
-
-**Folder tagging** with `_meta.yaml`:
-```yaml
-tags: ["handover", "semester", "documentation"]
-```
+Extracted markdown files in `data/extracted/` are searched using keyword matching. Use `giraf-mcp --extract` to convert PDFs to markdown first.
 
 ## Development
 
@@ -217,7 +201,7 @@ girafMCP-py/
 ├── src/girafmcp/
 │   ├── core/              # Ports, types, services, and DependencyContainer
 │   │   └── services/      # Guardrails, resilience, multiframe services
-│   ├── adapters/          # GitHub, ChromaDB, PDF, SQLite adapters
+│   ├── adapters/          # GitHub, keyword search, PDF, SQLite adapters
 │   ├── middleware/        # Request/response middleware
 │   ├── tools/             # Modular tool handlers & definitions by category
 │   └── server.py          # MCP server entry point & tool aggregation

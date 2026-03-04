@@ -1,8 +1,8 @@
-"""Search-related tool handlers using vector store."""
+"""Search-related tool handlers using keyword search over extracted documents."""
 
 import logging
 from mcp.types import TextContent, Tool
-from girafmcp.adapters import ChromaAdapter
+from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -66,22 +66,20 @@ def list_tools() -> list[Tool]:
 
 
 async def handle_search_documentation(
-    adapter: ChromaAdapter, query: str, limit: int = 5
+    adapter: KeywordSearchAdapter, query: str, limit: int = 5
 ) -> list[TextContent]:
-    """Search documentation using semantic search."""
+    """Search documentation using keyword search."""
     try:
-        results = await adapter.search("wiki", query, limit)
+        results = await adapter.search(query, limit)
         lines = [f"# Documentation Search Results for '{query}'", ""]
-        
+
         for result in results:
-            title = result.metadata.title or "Untitled"
-            section = f" - {result.metadata.section}" if result.metadata.section else ""
-            lines.append(f"## {title}{section}")
-            lines.append(f"**Score:** {result.score:.2f}")
-            if result.metadata.url:
-                lines.append(f"**Source:** {result.metadata.url}")
+            lines.append(f"## {result.title}")
+            lines.append(f"**Score:** {result.score:.0f} keyword hits")
+            if result.tags:
+                lines.append(f"**Tags:** {', '.join(result.tags)}")
             lines.append("")
-            lines.append(result.content)
+            lines.append(result.snippet)
             lines.append("")
             lines.append("---")
             lines.append("")
@@ -97,34 +95,21 @@ async def handle_search_documentation(
 
 
 async def handle_search_static_documents(
-    adapter: ChromaAdapter, query: str, limit: int = 5, tags: list[str] | None = None
+    adapter: KeywordSearchAdapter, query: str, limit: int = 5, tags: list[str] | None = None
 ) -> list[TextContent]:
-    """Search static documents (PDFs) using semantic search."""
+    """Search static documents (PDFs) using keyword search."""
     try:
-        # Note: ChromaDB adapter doesn't support tag filtering in search() yet in this implementation
-        # For now, we search and then filter, or just search if tags not supported
-        results = await adapter.search("documents", query, limit * 2) # Fetch extra for filtering
-        
-        if tags:
-            results = [
-                r for r in results 
-                if any(tag in r.metadata.tags for tag in tags)
-            ]
-            results = results[:limit]
-        else:
-            results = results[:limit]
+        results = await adapter.search(query, limit, tags=tags)
 
         lines = [f"# Static Documents Search Results for '{query}'", ""]
-        
+
         for result in results:
-            title = result.metadata.title or result.metadata.source or "Untitled"
-            page_info = f" (Page {result.metadata.page})" if result.metadata.page else ""
-            lines.append(f"## {title}{page_info}")
-            lines.append(f"**Score:** {result.score:.2f}")
-            if result.metadata.tags:
-                lines.append(f"**Tags:** {', '.join(result.metadata.tags)}")
+            lines.append(f"## {result.title}")
+            lines.append(f"**Score:** {result.score:.0f} keyword hits")
+            if result.tags:
+                lines.append(f"**Tags:** {', '.join(result.tags)}")
             lines.append("")
-            lines.append(result.content)
+            lines.append(result.snippet)
             lines.append("")
             lines.append("---")
             lines.append("")
@@ -139,18 +124,24 @@ async def handle_search_static_documents(
         return [TextContent(type="text", text=f"Error searching static documents: {e}")]
 
 
-async def handle_list_static_documents(adapter: ChromaAdapter) -> list[TextContent]:
-    """List all ingested static documents."""
+async def handle_list_static_documents(adapter: KeywordSearchAdapter) -> list[TextContent]:
+    """List all extracted static documents."""
     try:
-        count = await adapter.count("documents")
+        docs = await adapter.list_documents()
         lines = [
-            "# Static Documents", 
-            "", 
-            f"Total documents indexed: {count}",
+            "# Static Documents",
             "",
-            "Note: Listing individual documents is not yet supported by the adapter."
+            f"Total documents: {len(docs)}",
+            "",
         ]
-        
+
+        for doc in docs:
+            tags_str = f" [{', '.join(doc.tags)}]" if doc.tags else ""
+            lines.append(f"- **{doc.title}**{tags_str}")
+
+        if not docs:
+            lines.append("No documents found.")
+
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:

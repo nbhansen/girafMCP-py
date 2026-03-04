@@ -6,7 +6,7 @@
 
 This server connects AI agents (like Gemini, Claude) to the GIRAF project's ecosystem, providing access to:
 *   **Codebase:** Search and retrieval from GitHub repositories.
-*   **Documentation:** Live search of the project Wiki and semantic search of static PDF documents (handover reports, research papers).
+*   **Documentation:** Live search of the project Wiki and keyword search of extracted handover reports and research papers.
 *   **Domain Knowledge:** Contextual information about autism, visual schedules, and accessibility.
 *   **Research Features:** Experimental features for studying AI-assisted learning, including guardrails, resilience testing, and cross-disciplinary framing.
 
@@ -15,7 +15,7 @@ The project follows a **Hexagonal Architecture** pattern to separate domain logi
 ## Architecture
 
 *   **Core (`src/girafmcp/core/`):** Contains business logic, interfaces (ports), domain types, and the Dependency Injection container.
-*   **Adapters (`src/girafmcp/adapters/`):** Implementations of ports for external systems (GitHub API, ChromaDB, File System, SQLite).
+*   **Adapters (`src/girafmcp/adapters/`):** Implementations of ports for external systems (GitHub API, keyword search, File System, SQLite).
 *   **Tools (`src/girafmcp/tools/`):** MCP tool definitions and handlers, organized by domain (search, github, knowledge, etc.).
 *   **Middleware (`src/girafmcp/middleware/`):** Intercepts tool calls for logging, guardrails, and response adaptation.
 *   **Server (`src/girafmcp/server.py`):** The application entry point, wiring everything together using `mcp.server`.
@@ -24,7 +24,6 @@ The project follows a **Hexagonal Architecture** pattern to separate domain logi
 
 *   **Language:** Python 3.11+
 *   **MCP SDK:** `mcp` library for Model Context Protocol implementation.
-*   **Vector Database:** `chromadb` for semantic search of documentation.
 *   **PDF Extraction:** `pymupdf4llm` for high-quality Markdown extraction and `pymupdf-layout` for layout analysis.
 *   **Database:** `aiosqlite` for structured data (query logs, knowledge capture).
 *   **Web Server:** `starlette` / `uvicorn` (for HTTP mode).
@@ -62,7 +61,7 @@ The project follows a **Hexagonal Architecture** pattern to separate domain logi
 4.  **Configuration:**
     Create a `.env` file (copy from `.env.example`) and configure:
     *   `GITHUB_TOKEN`: Required for GitHub tools.
-    *   `GIRAF_DOCUMENTS_DIR`: Path to PDF documents for ingestion.
+    *   `GIRAF_EXTRACTED_DIR`: Path to extracted markdown documents (default: `data/extracted`).
     *   Research feature flags (optional): `GIRAF_GUARDRAILS_ENABLED`, `GIRAF_RESILIENCE_ENABLED`, etc.
 
 ### Execution
@@ -77,12 +76,6 @@ The project follows a **Hexagonal Architecture** pattern to separate domain logi
     Runs a web server (SSE/POST) for remote access.
     ```bash
     giraf-mcp --http --port 8000
-    ```
-
-*   **Document Ingestion:**
-    Ingests PDFs from `GIRAF_DOCUMENTS_DIR` into the vector database.
-    ```bash
-    giraf-mcp --ingest
     ```
 
 ### Docker
@@ -110,5 +103,4 @@ docker run -p 8000:8000 --env-file .env -v $(pwd)/data:/app/data giraf-mcp
 *   `src/girafmcp/`: Source code.
 *   `data/`: Configuration files (`personas.yaml`, `context.yaml`, `guardrails.yaml`) and domain knowledge (Markdown).
 *   `tests/`: Unit and integration tests.
-*   `chroma_data/`: Persisted Vector DB data.
 *   `docs/`: Project documentation.

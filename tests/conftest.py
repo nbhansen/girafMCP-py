@@ -9,7 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dotenv import load_dotenv
 
-from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter
+from girafmcp.adapters import FileAdapter, GitHubAdapter
+from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.container import DependencyContainer
 from girafmcp.core.services.guardrails_service import GuardrailsService
@@ -19,12 +20,6 @@ from girafmcp.core.services.resilience_service import ResilienceService
 # Load environment variables from .env file
 _project_root = Path(__file__).parent.parent
 load_dotenv(_project_root / ".env")
-
-
-@pytest.fixture
-def mock_chroma_adapter() -> Generator[ChromaAdapter, None, None]:
-    """Create a fresh ephemeral ChromaDB adapter."""
-    yield ChromaAdapter(ephemeral=True)
 
 
 @pytest.fixture
@@ -53,23 +48,22 @@ def mock_github_adapter() -> Generator[GitHubAdapter, None, None]:
 
 @pytest.fixture
 def mock_container(
-    mock_chroma_adapter: ChromaAdapter,
     mock_research_data_adapter: ResearchDataAdapter,
     mock_file_adapter: FileAdapter,
     mock_github_adapter: GitHubAdapter,
 ) -> Generator[DependencyContainer, None, None]:
     """Create a mock DependencyContainer with mocked adapters."""
     container = MagicMock(spec=DependencyContainer)
-    
+
     # Adapters
-    type(container).chroma_adapter = property(lambda self: mock_chroma_adapter)
+    type(container).keyword_search_adapter = property(
+        lambda self: KeywordSearchAdapter(extracted_dir=None)
+    )
     type(container).research_data_adapter = property(lambda self: mock_research_data_adapter)
     type(container).file_adapter = property(lambda self: mock_file_adapter)
     type(container).github_adapter = property(lambda self: mock_github_adapter)
 
-    # Services (using real instances for logic where possible, or mocks if heavy)
-    # Using real services for logic tests is often better if they are stateless enough
-    # But for full isolation, we'll mock them or rely on them being lightweight
+    # Services
     container.guardrails_service = MagicMock(spec=GuardrailsService)
     container.resilience_service = MagicMock(spec=ResilienceService)
     container.multiframe_service = MagicMock(spec=MultiFrameService)

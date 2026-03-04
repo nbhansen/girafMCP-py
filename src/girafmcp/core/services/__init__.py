@@ -1,6 +1,5 @@
 """Core services for GIRAF MCP server."""
 
-from girafmcp.core.services.ingestion_service import IngestionService, IngestionResult
 from girafmcp.core.services.guardrails_service import (
     GuardrailsService,
     GuardrailsConfig,
@@ -29,8 +28,6 @@ from girafmcp.core.services.multiframe_service import (
 )
 
 __all__ = [
-    "IngestionService",
-    "IngestionResult",
     "GuardrailsService",
     "GuardrailsConfig",
     "GuardrailMode",

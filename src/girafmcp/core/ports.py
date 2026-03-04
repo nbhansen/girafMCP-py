@@ -8,10 +8,11 @@ from abc import ABC, abstractmethod
 
 from .types import (
     CodeSearchResult,
-    Document,
     FileContent,
+    Project,
+    ProjectItem,
     Repository,
-    SearchResult,
+    TokenScopeResult,
 )
 
 
@@ -79,71 +80,60 @@ class RepositoryPort(ABC):
         ...
 
 
-class VectorStorePort(ABC):
-    """Port interface for vector store operations.
+class GitHubProjectsPort(ABC):
+    """Port interface for GitHub Projects V2 operations.
 
-    Abstracts semantic search functionality (ChromaDB, Qdrant, etc.)
+    Abstracts access to GitHub Projects V2 via GraphQL API.
     """
 
     @abstractmethod
-    async def search(
-        self, collection: str, query: str, limit: int = 10
-    ) -> list[SearchResult]:
-        """Search for similar documents.
+    async def list_org_projects(self, limit: int = 20) -> list[Project]:
+        """List all Projects V2 in the organization.
 
         Args:
-            collection: Collection name (e.g., 'wiki', 'code', 'domain')
-            query: Search query (will be embedded)
-            limit: Maximum number of results
+            limit: Maximum number of projects to return.
+
+        Returns:
+            List of projects in the organization.
         """
         ...
 
     @abstractmethod
-    async def upsert(self, collection: str, documents: list[Document]) -> None:
-        """Add or update documents in a collection.
+    async def get_project(self, project_number: int) -> Project | None:
+        """Get a specific project by number.
 
         Args:
-            collection: Collection name
-            documents: Documents to upsert
+            project_number: The project number (visible in URL).
+
+        Returns:
+            Project if found, None otherwise.
         """
         ...
 
     @abstractmethod
-    async def delete(self, collection: str, ids: list[str]) -> None:
-        """Delete documents by ID.
+    async def list_project_items(
+        self,
+        project_number: int,
+        limit: int = 50,
+        status_filter: str | None = None,
+    ) -> list[ProjectItem]:
+        """List items in a project.
 
         Args:
-            collection: Collection name
-            ids: Document IDs to delete
+            project_number: The project number.
+            limit: Maximum number of items to return.
+            status_filter: Optional status value to filter by.
+
+        Returns:
+            List of project items (issues, PRs, drafts).
         """
         ...
 
     @abstractmethod
-    async def get(self, collection: str, id: str) -> Document | None:
-        """Get a document by ID.
+    async def check_token_scope(self) -> TokenScopeResult:
+        """Check if the token has required scopes for Projects V2.
 
-        Args:
-            collection: Collection name
-            id: Document ID
+        Returns:
+            TokenScopeResult with scope information.
         """
-        ...
-
-    @abstractmethod
-    async def list_collections(self) -> list[str]:
-        """List all collections."""
-        ...
-
-    @abstractmethod
-    async def create_collection(self, collection: str) -> None:
-        """Create a collection if it doesn't exist."""
-        ...
-
-    @abstractmethod
-    async def delete_collection(self, collection: str) -> None:
-        """Delete a collection."""
-        ...
-
-    @abstractmethod
-    async def count(self, collection: str) -> int:
-        """Get the count of documents in a collection."""
         ...

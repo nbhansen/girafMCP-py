@@ -1,14 +1,17 @@
 """Core domain types and port interfaces."""
 
-from .ports import RepositoryPort, VectorStorePort
+from .ports import GitHubProjectsPort, RepositoryPort
 from .types import (
     CodeSearchResult,
     Document,
     DocumentMetadata,
     DocumentSource,
     FileContent,
+    Project,
+    ProjectItem,
     Repository,
     SearchResult,
+    TokenScopeResult,
     WikiPage,
     WikiSearchResult,
 )
@@ -19,10 +22,13 @@ __all__ = [
     "DocumentMetadata",
     "DocumentSource",
     "FileContent",
+    "GitHubProjectsPort",
+    "Project",
+    "ProjectItem",
     "Repository",
     "RepositoryPort",
     "SearchResult",
-    "VectorStorePort",
+    "TokenScopeResult",
     "WikiPage",
     "WikiSearchResult",
 ]

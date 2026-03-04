@@ -1,7 +1,8 @@
 """Adapter implementations for external services."""
 
-from .chroma_adapter import ChromaAdapter
 from .file_adapter import FileAdapter
 from .github_adapter import GitHubAdapter
+from .github_projects_adapter import GitHubProjectsAdapter
+from .keyword_search_adapter import KeywordSearchAdapter
 
-__all__ = ["ChromaAdapter", "FileAdapter", "GitHubAdapter"]
+__all__ = ["FileAdapter", "GitHubAdapter", "GitHubProjectsAdapter", "KeywordSearchAdapter"]

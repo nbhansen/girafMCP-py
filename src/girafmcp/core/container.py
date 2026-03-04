@@ -8,12 +8,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from girafmcp.adapters import ChromaAdapter, FileAdapter, GitHubAdapter
-from girafmcp.adapters.markdown_adapter import MarkdownAdapter
+from girafmcp.adapters import FileAdapter, GitHubAdapter
+from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
+from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.services.extraction_service import ExtractionService
 from girafmcp.core.services.guardrails_service import GuardrailsService
-from girafmcp.core.services.ingestion_service import IngestionService
 from girafmcp.core.services.multiframe_service import MultiFrameConfig, MultiFrameService
 from girafmcp.core.services.resilience_service import ResilienceService
 
@@ -28,11 +28,10 @@ class DependencyContainer:
     def __init__(self) -> None:
         """Initialize the container."""
         self._github_adapter: GitHubAdapter | None = None
-        self._chroma_adapter: ChromaAdapter | None = None
+        self._github_projects_adapter: GitHubProjectsAdapter | None = None
+        self._keyword_search_adapter: KeywordSearchAdapter | None = None
         self._file_adapter: FileAdapter | None = None
-        self._markdown_adapter: MarkdownAdapter | None = None
         self._extraction_service: ExtractionService | None = None
-        self._ingestion_service: IngestionService | None = None
         self._guardrails_service: GuardrailsService | None = None
         self._research_data_adapter: ResearchDataAdapter | None = None
         self._resilience_service: ResilienceService | None = None
@@ -49,12 +48,22 @@ class DependencyContainer:
         return self._github_adapter
 
     @property
-    def chroma_adapter(self) -> ChromaAdapter:
-        """Get or create ChromaDB adapter."""
-        if self._chroma_adapter is None:
-            persist_dir = os.environ.get("CHROMA_PERSIST_DIR", "./chroma_data")
-            self._chroma_adapter = ChromaAdapter(persist_directory=persist_dir)
-        return self._chroma_adapter
+    def github_projects_adapter(self) -> GitHubProjectsAdapter:
+        """Get or create GitHub Projects V2 adapter."""
+        if self._github_projects_adapter is None:
+            self._github_projects_adapter = GitHubProjectsAdapter(
+                org="aau-giraf",
+                token=os.environ.get("GITHUB_TOKEN"),
+            )
+        return self._github_projects_adapter
+
+    @property
+    def keyword_search_adapter(self) -> KeywordSearchAdapter:
+        """Get or create keyword search adapter."""
+        if self._keyword_search_adapter is None:
+            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
+            self._keyword_search_adapter = KeywordSearchAdapter(extracted_dir=extracted_dir)
+        return self._keyword_search_adapter
 
     @property
     def file_adapter(self) -> FileAdapter:
@@ -63,14 +72,6 @@ class DependencyContainer:
             data_dir = os.environ.get("GIRAF_DATA_DIR")
             self._file_adapter = FileAdapter(data_dir=data_dir)
         return self._file_adapter
-
-    @property
-    def markdown_adapter(self) -> MarkdownAdapter:
-        """Get or create markdown adapter."""
-        if self._markdown_adapter is None:
-            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
-            self._markdown_adapter = MarkdownAdapter(extracted_dir=extracted_dir)
-        return self._markdown_adapter
 
     @property
     def extraction_service(self) -> ExtractionService:
@@ -83,16 +84,6 @@ class DependencyContainer:
                 extracted_dir=extracted_dir,
             )
         return self._extraction_service
-
-    @property
-    def ingestion_service(self) -> IngestionService:
-        """Get or create ingestion service."""
-        if self._ingestion_service is None:
-            self._ingestion_service = IngestionService(
-                markdown_adapter=self.markdown_adapter,
-                chroma_adapter=self.chroma_adapter,
-            )
-        return self._ingestion_service
 
     @property
     def guardrails_service(self) -> GuardrailsService:

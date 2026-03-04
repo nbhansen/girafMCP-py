@@ -14,7 +14,7 @@ from mcp.types import TextContent, Tool
 
 from girafmcp.core.container import DependencyContainer
 from girafmcp.core.session import get_current_session
-from girafmcp.tools import context, discipline, github, knowledge, research, resilience, search
+from girafmcp.tools import context, discipline, github, knowledge, projects, research, resilience, search
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -39,6 +39,7 @@ async def list_tools() -> list[Tool]:
     tools.extend(knowledge.list_tools())
     tools.extend(resilience.list_tools())
     tools.extend(discipline.list_tools())
+    tools.extend(projects.list_tools())
     
     return tools
 
@@ -88,25 +89,25 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     # === Search Tools ===
     elif name == "search_documentation":
         return await search.handle_search_documentation(
-            container.chroma_adapter,
+            container.keyword_search_adapter,
             query=arguments["query"],
             limit=arguments.get("limit", 5),
         )
 
     elif name == "search_static_documents":
         return await search.handle_search_static_documents(
-            container.chroma_adapter,
+            container.keyword_search_adapter,
             query=arguments["query"],
             limit=arguments.get("limit", 5),
             tags=arguments.get("tags"),
         )
 
     elif name == "list_static_documents":
-        return await search.handle_list_static_documents(container.chroma_adapter)
+        return await search.handle_list_static_documents(container.keyword_search_adapter)
 
     # === Context Tools ===
-    elif name == "get_project_context":
-        return await context.handle_get_project_context(container.file_adapter)
+    elif name == "get_semester_context":
+        return await context.handle_get_semester_context(container.file_adapter)
 
     elif name == "list_personas":
         return await context.handle_list_personas(container.file_adapter)
@@ -303,6 +304,32 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             service=container.multiframe_service,
         )
 
+    # === GitHub Projects V2 Tools ===
+    elif name == "list_github_projects":
+        return await projects.handle_list_github_projects(
+            adapter=container.github_projects_adapter,
+            limit=arguments.get("limit", 20),
+        )
+
+    elif name == "get_github_project":
+        return await projects.handle_get_github_project(
+            adapter=container.github_projects_adapter,
+            project_number=arguments["project_number"],
+        )
+
+    elif name == "list_project_items":
+        return await projects.handle_list_project_items(
+            adapter=container.github_projects_adapter,
+            project_number=arguments["project_number"],
+            limit=arguments.get("limit", 50),
+            status_filter=arguments.get("status_filter"),
+        )
+
+    elif name == "check_github_projects_access":
+        return await projects.handle_check_github_projects_access(
+            adapter=container.github_projects_adapter,
+        )
+
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -315,52 +342,11 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextConte
     return cast(list[TextContent], await call_tool(name, arguments))
 
 
-# === Startup Initialization ===
-
-
-async def initialize_static_documents() -> None:
-    """Auto-ingest static documents on server startup."""
-    import logging
-
-    logger = logging.getLogger(__name__)
-    
-    # Check if ingestion is enabled/configured (implicitly via DIR existence)
-    # The container handles defaults, but we can check if the dir exists before running
-    # to avoid noise logs.
-    extracted_dir = container.markdown_adapter.extracted_dir
-    
-    if not extracted_dir or not extracted_dir.exists():
-        logger.info("Extracted documents directory not found or not set. Skipping ingestion.")
-        return
-
-    try:
-        # We assume extraction is done offline via --extract
-        # So we just run ingestion of existing artifacts
-        result = await container.ingestion_service.ingest_all()
-
-        if result.files_processed > 0:
-            logger.info(
-                f"Ingested {result.files_processed} files ({result.documents_created} chunks)"
-            )
-        if result.files_skipped > 0:
-            logger.info(f"Skipped {result.files_skipped} unchanged files")
-        if result.files_updated > 0:
-            logger.info(f"Updated {result.files_updated} modified files")
-        if result.errors:
-            for error in result.errors:
-                logger.error(error)
-
-    except Exception as e:
-        logger.error(f"Error during document ingestion: {e}")
-
-
 # === Entry Point ===
 
 
 async def run_stdio_server() -> None:
     """Run the MCP server with stdio transport (for Claude Desktop)."""
-    await initialize_static_documents()
-
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
@@ -399,39 +385,6 @@ async def run_extraction() -> None:
                 
     except Exception as e:
         print(f"Error during extraction: {e}")
-        raise
-
-
-async def run_ingestion() -> None:
-    """Run document ingestion from artifacts and exit (no server).
-
-    Use this to ingest extracted documents:
-        giraf-mcp --ingest
-    """
-    import logging
-    
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
-
-    print("Ingesting documents from artifacts...")
-    print(f"Source: {container.markdown_adapter.extracted_dir}")
-
-    try:
-        result = await container.ingestion_service.ingest_all()
-
-        print("\nIngestion complete:")
-        print(f"  Files processed: {result.files_processed}")
-        print(f"  Files skipped (unchanged): {result.files_skipped}")
-        print(f"  Files updated: {result.files_updated}")
-        print(f"  Document chunks created: {result.documents_created}")
-
-        if result.errors:
-            print(f"\nErrors ({len(result.errors)}):")
-            for error in result.errors:
-                print(f"  - {error}")
-
-    except Exception as e:
-        print(f"Error during ingestion: {e}")
         raise
 
 
@@ -480,7 +433,6 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
         logger.info(f"Starting GIRAF MCP server on http://{host}:{port}")
         logger.info(f"SSE endpoint: http://{host}:{port}/sse")
         logger.info(f"Messages endpoint: http://{host}:{port}/messages/")
-        await initialize_static_documents()
         yield
         # Shutdown
         logger.info("Shutting down GIRAF MCP server")
@@ -505,7 +457,7 @@ def main() -> None:
 
     Usage:
         giraf-mcp              # Run with stdio (default, for Claude Desktop)
-        giraf-mcp --ingest     # Ingest documents and exit (run when adding new PDFs)
+        giraf-mcp --extract    # Extract Markdown from PDFs and exit
         giraf-mcp --http       # Run with HTTP/SSE transport
         giraf-mcp --http --port 9000  # Custom port
     """
@@ -522,11 +474,6 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         description="GIRAF MCP Server - Knowledge assistant for the GIRAF project"
-    )
-    parser.add_argument(
-        "--ingest",
-        action="store_true",
-        help="Ingest documents from extracted artifacts and exit (no server)",
     )
     parser.add_argument(
         "--extract",
@@ -554,9 +501,6 @@ def main() -> None:
 
     if args.extract:
         asyncio.run(run_extraction())
-    elif args.ingest:
-        # Run ingestion only, then exit
-        asyncio.run(run_ingestion())
     elif args.http:
         run_http_server(host=args.host, port=args.port)
     else:
