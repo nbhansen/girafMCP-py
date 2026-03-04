@@ -288,7 +288,7 @@ class GitHubProjectsAdapter(GitHubProjectsPort):
 
                 # Extract labels
                 labels_data = content.get("labels", {}).get("nodes", [])
-                labels = [l["name"] for l in labels_data if l]
+                labels = [label["name"] for label in labels_data if label]
 
                 # Extract repository
                 repo_data = content.get("repository")
