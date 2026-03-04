@@ -300,3 +300,49 @@ class HandoverPackage:
     # Quality metadata
     human_reviewed: bool = False
     reviewer_notes: str | None = None
+
+
+# =============================================================================
+# GitHub Projects V2 Types
+# =============================================================================
+
+
+@dataclass
+class Project:
+    """A GitHub Project V2."""
+
+    id: str  # GraphQL node ID
+    number: int  # Human-readable project number (in URL)
+    title: str
+    description: str | None
+    url: str
+    closed: bool
+    public: bool
+    created_at: str
+    updated_at: str
+    items_count: int
+
+
+@dataclass
+class ProjectItem:
+    """An item in a GitHub Project V2 (issue, PR, or draft)."""
+
+    id: str
+    type: Literal["ISSUE", "PULL_REQUEST", "DRAFT_ISSUE"]
+    title: str
+    url: str | None  # Draft issues may not have URLs
+    status: str | None  # Status field value if configured
+    assignees: list[str] = field(default_factory=list)
+    labels: list[str] = field(default_factory=list)
+    repository: str | None = None  # Repository name for issues/PRs
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
+class TokenScopeResult:
+    """Result of checking GitHub token scopes."""
+
+    has_project_scope: bool
+    scopes: list[str] = field(default_factory=list)
+    message: str = ""

@@ -14,8 +14,8 @@ class TestServerWiring:
         """list_tools should aggregate tools from all modules."""
         tools = await list_tools()
         
-        # We expect a substantial number of tools (36 in total as per docs)
-        assert len(tools) >= 36
+        # We expect a substantial number of tools (40+ with GitHub Projects V2 tools)
+        assert len(tools) >= 40
         
         tool_names = [t.name for t in tools]
         assert "list_repositories" in tool_names
@@ -33,7 +33,7 @@ class TestServerWiring:
         mock_container.github_adapter.list_repos.assert_called_once()
 
         # Test Context dispatch
-        await call_tool("get_project_context", {})
+        await call_tool("get_semester_context", {})
         mock_container.file_adapter.get_context.assert_called_once()
         
         # Test Knowledge dispatch
