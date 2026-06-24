@@ -107,7 +107,7 @@ personas:
 
 ### 4. Adding Static Documents (PDFs)
 
-Static documents like research papers and handover reports are ingested for semantic search.
+Static documents like research papers and handover reports are ingested for keyword search over the extracted Markdown.
 
 **Location:** Set via `GIRAF_DOCUMENTS_DIR` environment variable
 
