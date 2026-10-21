@@ -119,7 +119,7 @@ class GuardrailsConfig:
             return GuardrailMode.OFF
 
         if team_id:
-            overrides = self._config.get("team_overrides", {})
+            overrides = self._config.get("team_overrides") or {}
             if team_id in overrides:
                 override = overrides[team_id]
                 if not override.get("enabled", True):
@@ -181,7 +181,7 @@ class GuardrailsConfig:
         Returns:
             TierConfig if found, None otherwise
         """
-        tiers = self._config.get("tiers", {})
+        tiers = self._config.get("tiers") or {}
         if tier in tiers:
             tier_data = tiers[tier]
             return TierConfig(
@@ -194,7 +194,7 @@ class GuardrailsConfig:
     @property
     def max_tier(self) -> int:
         """Get the maximum tier number."""
-        tiers = self._config.get("tiers", {})
+        tiers = self._config.get("tiers") or {}
         if tiers:
             return cast(int, max(tiers.keys()))
         return 4
@@ -202,12 +202,12 @@ class GuardrailsConfig:
     @property
     def cooldown_delay_seconds(self) -> int:
         """Get cooldown delay in seconds."""
-        return cast(int, self._config.get("cooldown", {}).get("delay_seconds", 30))
+        return cast(int, (self._config.get("cooldown") or {}).get("delay_seconds", 30))
 
     @property
     def cooldown_reflection_prompt(self) -> str:
         """Get the cooldown reflection prompt template."""
-        return cast(str, self._config.get("cooldown", {}).get(
+        return cast(str, (self._config.get("cooldown") or {}).get(
             "reflection_prompt",
             "Please wait {remaining_seconds} seconds before receiving the full solution.",
         ))
@@ -215,7 +215,7 @@ class GuardrailsConfig:
     @property
     def attempt_first_prompt(self) -> str:
         """Get the attempt-first prompt for prompt mode."""
-        return cast(str, self._config.get("attempt_first", {}).get(
+        return cast(str, (self._config.get("attempt_first") or {}).get(
             "prompt",
             "What have you tried so far?",
         ))
@@ -223,7 +223,7 @@ class GuardrailsConfig:
     @property
     def bypass_indicators(self) -> list[str]:
         """Get list of phrases that bypass the attempt-first prompt."""
-        return cast(list[str], self._config.get("attempt_first", {}).get("bypass_indicators", []))
+        return cast(list[str], (self._config.get("attempt_first") or {}).get("bypass_indicators", []))
 
     def has_bypass_indicator(self, query_text: str | None) -> bool:
         """Check if query text contains a bypass indicator.
