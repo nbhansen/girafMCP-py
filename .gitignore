@@ -52,3 +52,7 @@ chroma_data/
 # Document storage (PDFs and extracted markdown)
 data/documents/
 data/extracted/
+
+# Runtime knowledge store and exports (contain session/query data)
+data/knowledge.db
+data/exports/

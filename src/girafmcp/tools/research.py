@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
+from girafmcp.core.paths import DATA_DIR
 from girafmcp.core.services.guardrails_service import (
     GuardrailsService,
     GuardrailMode,
@@ -377,7 +378,7 @@ async def handle_export_query_logs(
         path = Path(output_path)
     else:
         # Default to data/exports/
-        exports_dir = Path("data/exports")
+        exports_dir = DATA_DIR / "exports"
         exports_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = exports_dir / f"query_logs_{timestamp}.csv"

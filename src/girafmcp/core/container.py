@@ -12,14 +12,14 @@ from girafmcp.adapters import FileAdapter, GitHubAdapter
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
 from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
+from girafmcp.core.paths import DATA_DIR, PROJECT_ROOT
 from girafmcp.core.services.extraction_service import ExtractionService
 from girafmcp.core.services.guardrails_service import GuardrailsService
 from girafmcp.core.services.multiframe_service import MultiFrameConfig, MultiFrameService
 from girafmcp.core.services.resilience_service import ResilienceService
 
 # Load .env file from project root
-_project_root = Path(__file__).parent.parent.parent.parent
-load_dotenv(_project_root / ".env")
+load_dotenv(PROJECT_ROOT / ".env")
 
 
 class DependencyContainer:
@@ -61,7 +61,7 @@ class DependencyContainer:
     def keyword_search_adapter(self) -> KeywordSearchAdapter:
         """Get or create keyword search adapter."""
         if self._keyword_search_adapter is None:
-            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
+            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", str(DATA_DIR / "extracted")))
             self._keyword_search_adapter = KeywordSearchAdapter(extracted_dir=extracted_dir)
         return self._keyword_search_adapter
 
@@ -77,8 +77,8 @@ class DependencyContainer:
     def extraction_service(self) -> ExtractionService:
         """Get or create extraction service."""
         if self._extraction_service is None:
-            documents_dir = Path(os.environ.get("GIRAF_DOCUMENTS_DIR", "data/documents"))
-            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", "data/extracted"))
+            documents_dir = Path(os.environ.get("GIRAF_DOCUMENTS_DIR", str(DATA_DIR / "documents")))
+            extracted_dir = Path(os.environ.get("GIRAF_EXTRACTED_DIR", str(DATA_DIR / "extracted")))
             self._extraction_service = ExtractionService(
                 documents_dir=documents_dir,
                 extracted_dir=extracted_dir,
@@ -96,7 +96,7 @@ class DependencyContainer:
     def research_data_adapter(self) -> ResearchDataAdapter:
         """Get or create research data adapter."""
         if self._research_data_adapter is None:
-            db_path = os.environ.get("GIRAF_KNOWLEDGE_DB", "data/knowledge.db")
+            db_path = os.environ.get("GIRAF_KNOWLEDGE_DB", str(DATA_DIR / "knowledge.db"))
             self._research_data_adapter = ResearchDataAdapter(db_path)
         return self._research_data_adapter
 
@@ -114,7 +114,7 @@ class DependencyContainer:
             config_path = Path(
                 os.environ.get(
                     "GIRAF_DISCIPLINE_PROFILES",
-                    str(_project_root / "data" / "discipline_profiles.yaml"),
+                    str(DATA_DIR / "discipline_profiles.yaml"),
                 )
             )
             config = MultiFrameConfig(config_path)

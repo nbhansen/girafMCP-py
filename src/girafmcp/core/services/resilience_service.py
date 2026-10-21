@@ -264,9 +264,12 @@ class ResilienceService:
         """
         if config is None:
             import os
+
+            from girafmcp.core.paths import DATA_DIR
+
             config_path = os.environ.get(
                 "GIRAF_RESILIENCE_CONFIG",
-                "data/resilience_tests.yaml"
+                str(DATA_DIR / "resilience_tests.yaml"),
             )
             config = ResilienceConfig(Path(config_path))
 

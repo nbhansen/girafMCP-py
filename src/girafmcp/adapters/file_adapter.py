@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+from girafmcp.core.paths import DATA_DIR
+
 
 @dataclass
 class DomainSearchResult:
@@ -34,7 +36,7 @@ class FileAdapter:
         """
         if data_dir is None:
             # Default to data/ relative to the package
-            self.data_dir = Path(__file__).parent.parent.parent.parent / "data"
+            self.data_dir = DATA_DIR
         else:
             self.data_dir = Path(data_dir)
 
