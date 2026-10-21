@@ -71,13 +71,18 @@ GIRAF_DISCIPLINE_ENABLED=false
 # Standard mode (stdio for Claude Desktop/Code)
 giraf-mcp
 
-# HTTP mode for remote/shared access
+# HTTP mode (binds 127.0.0.1 by default)
 pip install -e ".[http]"
 giraf-mcp --http --port 8000
 
-# Docker mode
+# HTTP mode for remote/shared access: any non-loopback host requires a token,
+# which clients send as "Authorization: Bearer <token>"
+GIRAF_MCP_TOKEN=$(openssl rand -hex 32) giraf-mcp --http --host 0.0.0.0
+
+# Docker mode (binds 0.0.0.0, so a token is required)
 docker build -t giraf-mcp .
 docker run -p 8000:8000 \
+  -e GIRAF_MCP_TOKEN=your_shared_secret \
   -e GITHUB_TOKEN=your_token \
   -v $(pwd)/data:/app/data \
   giraf-mcp

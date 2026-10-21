@@ -16,11 +16,8 @@ dependencies = [
 giraf-mcp = "girafmcp.server:main"
 
 [project.optional-dependencies]
-http = [
-    "uvicorn>=0.27.0",
-    "starlette>=0.30.0",
-    "sse-starlette>=1.6.0",
-]
+# mcp itself depends on uvicorn and starlette; the extra is kept so `.[http]` installs still work
+http = []
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

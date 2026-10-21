@@ -117,7 +117,7 @@ Set up on a server students can connect to via MCP
 
 ## Quick Wins
 
-1. **Add 2-3 PDFs** to documents folder → instant semantic search
+1. **Add 2-3 PDFs** to documents folder and run `giraf-mcp --extract` → searchable by keyword
 2. **Update context.yaml** with this semester's info → immediate value
 3. **Write one domain file** on the most common question → reduces repetitive answers
 

@@ -5,7 +5,6 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV GIRAF_DATA_DIR=/app/data
-ENV CHROMA_PERSIST_DIR=/app/chroma_data
 ENV GIRAF_MCP_HOST=0.0.0.0
 ENV GIRAF_MCP_PORT=8000
 
@@ -26,7 +25,7 @@ RUN pip install --no-cache-dir hatchling && \
 COPY . .
 
 # Create directories for data persistence
-RUN mkdir -p data chroma_data
+RUN mkdir -p data
 
 # Expose the port the app runs on
 EXPOSE 8000
