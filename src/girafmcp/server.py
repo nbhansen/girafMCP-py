@@ -5,9 +5,11 @@ and domain knowledge to help students working on the GIRAF project.
 """
 
 import asyncio
+import hmac
 import logging
 import os
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server import Server, ServerRequestContext
@@ -354,27 +356,54 @@ async def run_extraction() -> None:
         raise
 
 
-def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def require_bearer_token(app: Any, token: str) -> Any:
+    """Wrap an ASGI app so every request except /health needs `Authorization: Bearer <token>`."""
+    from starlette.responses import JSONResponse
+
+    expected = f"Bearer {token}".encode()
+
+    async def guarded(scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] == "http" and scope["path"] != "/health":
+            supplied = dict(scope["headers"]).get(b"authorization", b"")
+            if not hmac.compare_digest(supplied, expected):
+                response = JSONResponse({"error": "unauthorized"}, status_code=401)
+                await response(scope, receive, send)
+                return
+        await app(scope, receive, send)
+
+    return guarded
+
+
+def run_http_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     """Run the MCP server with HTTP/SSE transport (for remote access).
+
+    Binding to anything other than loopback requires GIRAF_MCP_TOKEN, since
+    the tools can write files and read the knowledge base.
 
     Args:
         host: Host to bind to. Use "0.0.0.0" for all interfaces.
         port: Port to listen on.
     """
-    import logging
-
     import uvicorn
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
-    from starlette.responses import JSONResponse
-    from starlette.routing import Route
+    from starlette.responses import JSONResponse, Response
+    from starlette.routing import Mount, Route
 
-    logger = logging.getLogger(__name__)
+    token = os.environ.get("GIRAF_MCP_TOKEN")
+    if not token and host not in LOOPBACK_HOSTS:
+        raise SystemExit(
+            f"Refusing to serve on {host} without authentication: set GIRAF_MCP_TOKEN, "
+            "or bind to 127.0.0.1"
+        )
 
     # Create SSE transport
     sse = SseServerTransport("/messages/")
 
-    async def handle_sse(request: Any) -> None:
+    async def handle_sse(request: Any) -> Response:
         """Handle SSE connection."""
         async with sse.connect_sse(
             request.scope, request.receive, request._send
@@ -384,16 +413,15 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
                 streams[1],
                 server.create_initialization_options(),
             )
-
-    async def handle_messages(request: Any) -> None:
-        """Handle incoming messages."""
-        await sse.handle_post_message(request.scope, request.receive, request._send)
+        # The SSE stream already responded; Starlette still needs a Response object
+        return Response()
 
     async def health_check(request: Any) -> JSONResponse:
         """Health check endpoint."""
         return JSONResponse({"status": "ok", "server": "giraf-mcp"})
 
-    async def lifespan(app: Any) -> AsyncGenerator[None, None]:
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
         """Lifespan handler for startup/shutdown."""
 
         # Startup
@@ -409,14 +437,15 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
         debug=False,
         routes=[
             Route("/health", health_check),
-            Route("/sse", handle_sse),
-            Route("/messages/", handle_messages, methods=["POST"]),
+            Route("/sse", handle_sse, methods=["GET"]),
+            Mount("/messages/", app=sse.handle_post_message),
         ],
-        lifespan=lifespan,  # type: ignore
+        lifespan=lifespan,
     )
 
     # Run with uvicorn
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    asgi_app = require_bearer_token(app, token) if token else app
+    uvicorn.run(asgi_app, host=host, port=port, log_level="info")
 
 
 def main() -> None:
@@ -454,8 +483,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--host",
-        default=os.environ.get("GIRAF_MCP_HOST", "0.0.0.0"),
-        help="Host to bind to (default: 0.0.0.0)",
+        default=os.environ.get("GIRAF_MCP_HOST", "127.0.0.1"),
+        help="Host to bind to (default: 127.0.0.1; other hosts require GIRAF_MCP_TOKEN)",
     )
     parser.add_argument(
         "--port",
