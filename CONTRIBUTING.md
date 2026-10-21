@@ -177,16 +177,21 @@ concept_translations:
 
 ### 6. Working with Research Features
 
-The MCP server includes experimental research features for studying AI-assisted learning. These are disabled by default.
+The MCP server includes research features for studying AI-assisted learning. Every tool call
+runs through a middleware chain (logging → guardrails → discipline framing → resilience), and
+each middleware checks its own flag per call.
 
-**Enabling features:**
+**Feature flags** (defaults shown):
 
 ```bash
 # In .env file
-GIRAF_GUARDRAILS_ENABLED=true    # Scaffolding prompts for learning
-GIRAF_RESILIENCE_ENABLED=true    # Error injection for assessment
-GIRAF_DISCIPLINE_ENABLED=true    # Cross-disciplinary adaptation
+GIRAF_QUERY_LOGGING_ENABLED=true  # Log tool calls to data/knowledge.db
+GIRAF_GUARDRAILS_ENABLED=true     # Scaffolding prompts for learning
+GIRAF_DISCIPLINE_ENABLED=true     # Cross-disciplinary adaptation
+GIRAF_RESILIENCE_ENABLED=false    # Error injection for assessment
 ```
+
+Research session state (team, discipline, guardrail tier) lasts for one client connection.
 
 **Updating guardrails** (`data/guardrails.yaml`):
 
