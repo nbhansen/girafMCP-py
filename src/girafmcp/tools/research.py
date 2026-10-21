@@ -5,7 +5,6 @@ Tools for session management, guardrails, and research data export.
 
 import logging
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Any
 
 from mcp.types import TextContent, Tool
@@ -107,7 +106,7 @@ def list_tools() -> list[Tool]:
                 "properties": {
                     "output_path": {
                         "type": "string",
-                        "description": "Path for CSV output (optional)",
+                        "description": "CSV file name inside data/exports/ (optional)",
                     },
                     "start_date": {
                         "type": "string",
@@ -339,7 +338,7 @@ async def handle_export_query_logs(
 
     Args:
         adapter: Research data adapter
-        output_path: Path for CSV output (default: data/exports/query_logs.csv)
+        output_path: CSV file name, resolved inside data/exports/ (default: timestamped name)
         start_date: Filter by start date (ISO 8601)
         end_date: Filter by end date (ISO 8601)
         team_id: Filter by team
@@ -374,13 +373,18 @@ async def handle_export_query_logs(
                 )
             ]
 
-    # Determine output path
+    # Exports always land in data/exports/; callers can only choose the file name
+    exports_dir = (DATA_DIR / "exports").resolve()
     if output_path:
-        path = Path(output_path)
+        path = (exports_dir / output_path).resolve()
+        if not path.is_relative_to(exports_dir):
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Invalid output_path: {output_path}. It must stay inside data/exports/",
+                )
+            ]
     else:
-        # Default to data/exports/
-        exports_dir = DATA_DIR / "exports"
-        exports_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = exports_dir / f"query_logs_{timestamp}.csv"
 

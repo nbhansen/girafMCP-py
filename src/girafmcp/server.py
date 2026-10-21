@@ -387,18 +387,18 @@ def run_http_server(host: str = "127.0.0.1", port: int = 8000) -> None:
         host: Host to bind to. Use "0.0.0.0" for all interfaces.
         port: Port to listen on.
     """
-    import uvicorn
-    from mcp.server.sse import SseServerTransport
-    from starlette.applications import Starlette
-    from starlette.responses import JSONResponse, Response
-    from starlette.routing import Mount, Route
-
     token = os.environ.get("GIRAF_MCP_TOKEN")
     if not token and host not in LOOPBACK_HOSTS:
         raise SystemExit(
             f"Refusing to serve on {host} without authentication: set GIRAF_MCP_TOKEN, "
             "or bind to 127.0.0.1"
         )
+
+    import uvicorn
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.responses import JSONResponse, Response
+    from starlette.routing import Mount, Route
 
     # Create SSE transport
     sse = SseServerTransport("/messages/")
