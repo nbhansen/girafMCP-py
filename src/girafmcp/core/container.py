@@ -17,6 +17,11 @@ from girafmcp.core.services.extraction_service import ExtractionService
 from girafmcp.core.services.guardrails_service import GuardrailsService
 from girafmcp.core.services.multiframe_service import MultiFrameConfig, MultiFrameService
 from girafmcp.core.services.resilience_service import ResilienceService
+from girafmcp.middleware import MiddlewareChain
+from girafmcp.middleware.discipline import DisciplineMiddleware
+from girafmcp.middleware.guardrails import GuardrailsMiddleware
+from girafmcp.middleware.logging import LoggingMiddleware
+from girafmcp.middleware.resilience import ResilienceMiddleware
 
 # Load .env file from project root
 load_dotenv(PROJECT_ROOT / ".env")
@@ -36,6 +41,7 @@ class DependencyContainer:
         self._research_data_adapter: ResearchDataAdapter | None = None
         self._resilience_service: ResilienceService | None = None
         self._multiframe_service: MultiFrameService | None = None
+        self._middleware_chain: MiddlewareChain | None = None
 
     @property
     def github_adapter(self) -> GitHubAdapter:
@@ -120,3 +126,31 @@ class DependencyContainer:
             config = MultiFrameConfig(config_path)
             self._multiframe_service = MultiFrameService(config)
         return self._multiframe_service
+
+    @property
+    def middleware_chain(self) -> MiddlewareChain:
+        """Get or create the research middleware chain.
+
+        Order, outermost first: logging records what the student finally saw,
+        guardrails may withhold or scaffold, discipline framing adapts wording,
+        and resilience injects errors into the raw handler output. Each one
+        checks its own feature flag per call.
+        """
+        if self._middleware_chain is None:
+            self._middleware_chain = (
+                MiddlewareChain()
+                .add(LoggingMiddleware(self.research_data_adapter))
+                .add(GuardrailsMiddleware(self.guardrails_service))
+                .add(DisciplineMiddleware(self.multiframe_service))
+                .add(ResilienceMiddleware(self.resilience_service))
+            )
+        return self._middleware_chain
+
+    async def aclose(self) -> None:
+        """Flush pending query logs and close HTTP clients."""
+        if self._middleware_chain is not None:
+            for middleware in self._middleware_chain.middlewares:
+                if isinstance(middleware, LoggingMiddleware):
+                    await middleware.drain()
+        if self._github_adapter is not None:
+            await self._github_adapter.aclose()

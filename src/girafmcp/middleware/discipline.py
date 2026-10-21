@@ -5,10 +5,10 @@ Adapts AI responses for different disciplinary backgrounds
 """
 
 import logging
-import os
 
 from mcp.types import TextContent
 
+from girafmcp.core.features import Feature, FeatureRegistry
 from girafmcp.core.services.multiframe_service import MultiFrameService
 from girafmcp.middleware import Middleware, NextMiddleware, ToolContext
 
@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 
 def is_discipline_feature_enabled() -> bool:
     """Check if discipline framing feature is enabled."""
-    env_val = os.environ.get("GIRAF_DISCIPLINE_ENABLED", "").lower()
-    return env_val in ("true", "1", "yes")
+    return FeatureRegistry.is_enabled(Feature.DISCIPLINE_FRAMING)
 
 
 class DisciplineMiddleware(Middleware):
