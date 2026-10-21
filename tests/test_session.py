@@ -1,13 +1,11 @@
 """Tests for session state management."""
 
-import pytest
-from datetime import datetime, timedelta
 
 from girafmcp.core.session import (
     SessionState,
     get_current_session,
-    set_current_session,
     reset_session,
+    set_current_session,
 )
 
 

@@ -4,15 +4,17 @@ Tools for session management, guardrails, and research data export.
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
+from girafmcp.core.paths import DATA_DIR
 from girafmcp.core.services.guardrails_service import (
-    GuardrailsService,
     GuardrailMode,
+    GuardrailsService,
 )
 from girafmcp.core.session import SessionState
 
@@ -25,7 +27,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="set_session_metadata",
             description="Set research metadata for this session (team, role, discipline). Called once at session start for logging purposes.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "team_id": {
@@ -49,7 +51,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="request_more_detail",
             description="Request more detailed guidance on the previous query. Advances through hint -> guidance -> example -> solution tiers.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -58,7 +60,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="configure_guardrails",
             description="Configure guardrail settings for a team. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "team_id": {
@@ -81,7 +83,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_guardrails_status",
             description="Get current guardrails status for the session.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -90,7 +92,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_feature_status",
             description="Get status of all research features (enabled/disabled).",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -100,7 +102,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="export_query_logs",
             description="Export query logs to CSV for research analysis. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "output_path": {
@@ -218,7 +220,7 @@ async def handle_request_more_detail(
         return result
 
     except Exception as e:
-        logger.error(f"Error re-running previous query: {e}", exc_info=True)
+        logger.exception("Error re-running previous query")
         return [
             TextContent(
                 type="text",
@@ -377,7 +379,7 @@ async def handle_export_query_logs(
         path = Path(output_path)
     else:
         # Default to data/exports/
-        exports_dir = Path("data/exports")
+        exports_dir = DATA_DIR / "exports"
         exports_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = exports_dir / f"query_logs_{timestamp}.csv"
@@ -404,7 +406,7 @@ async def handle_export_query_logs(
         ]
 
     except Exception as e:
-        logger.error(f"Error exporting query logs: {e}", exc_info=True)
+        logger.exception("Error exporting query logs")
         return [
             TextContent(
                 type="text",

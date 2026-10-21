@@ -7,28 +7,25 @@ Tests cover:
 - Detection metrics calculation
 """
 
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import uuid
 
 import pytest
 import yaml
 
 from girafmcp.core.services.resilience_service import (
-    ResilienceService,
+    ErrorType,
     ResilienceConfig,
     ResilienceMode,
-    ErrorType,
-    ErrorDifficulty,
-    InjectedError,
-    ErrorReport,
+    ResilienceService,
 )
 
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TestResilienceConfig:
@@ -205,7 +202,7 @@ class TestResilienceService:
         session_id = str(uuid.uuid4())
         response = "Use a loop: for i in range(0, 10) to iterate."
 
-        modified, error = service.inject_error(
+        _modified, error = service.inject_error(
             response=response,
             tool_name="search_code",
             session_id=session_id,
@@ -245,7 +242,7 @@ class TestResilienceService:
 
         # First inject an error
         response = "for i in range(0, 10):"
-        modified, error = service.inject_error(
+        _modified, error = service.inject_error(
             response=response,
             tool_name="search_code",
             session_id=session_id,

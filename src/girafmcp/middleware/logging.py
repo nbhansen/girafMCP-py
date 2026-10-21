@@ -8,8 +8,8 @@ import asyncio
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, ClassVar
 
 from mcp.types import TextContent
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class LoggingMiddleware(Middleware):
@@ -44,17 +44,17 @@ class LoggingMiddleware(Middleware):
     """
 
     # Tools to exclude from logging (internal/admin tools)
-    EXCLUDED_TOOLS = {
+    EXCLUDED_TOOLS: ClassVar[frozenset[str]] = frozenset({
         "set_session_metadata",
         "export_query_logs",
         "get_feature_status",
         "configure_guardrails",
         "configure_resilience_test",
         "reload_configuration",
-    }
+    })
 
     # Fields to truncate in arguments for privacy/size
-    TRUNCATE_FIELDS = {"content", "code", "body", "text"}
+    TRUNCATE_FIELDS: ClassVar[frozenset[str]] = frozenset({"content", "code", "body", "text"})
     MAX_FIELD_LENGTH = 500
 
     def __init__(self, adapter: ResearchDataAdapter):
@@ -154,8 +154,8 @@ class LoggingMiddleware(Middleware):
             # Store log
             await self.adapter.log_query(log)
 
-        except Exception as e:
-            logger.error(f"Failed to log query: {e}", exc_info=True)
+        except Exception:
+            logger.exception("Failed to log query")
 
     def _extract_query_text(self, ctx: ToolContext) -> str | None:
         """Extract natural language query from tool arguments."""

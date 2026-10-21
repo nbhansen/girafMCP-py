@@ -5,10 +5,10 @@ with support for fetching files and generating permalinks for citations.
 """
 
 import base64
+import logging
 import os
 
 import httpx
-
 
 from girafmcp.core import (
     CodeSearchResult,
@@ -18,6 +18,8 @@ from girafmcp.core import (
     WikiPage,
     WikiSearchResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubAdapter(RepositoryPort):
@@ -366,8 +368,8 @@ class GitHubAdapter(RepositoryPort):
                             matches=matches[:5],
                             relevance=relevance,
                         )
-                except Exception:
-                    pass
+                except (httpx.HTTPError, ValueError) as e:
+                    logger.warning(f"Skipping wiki page {page.path}: {e}")
                 return None
 
         # Fetch and search all pages in parallel

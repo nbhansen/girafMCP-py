@@ -6,7 +6,7 @@ and generating handover packages.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from mcp.types import TextContent, Tool
 
@@ -30,7 +30,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="capture_decision",
             description="Record an architectural or technical decision (ADR). Creates an ADR for future reference and handover.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "title": {
@@ -76,7 +76,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="capture_lesson",
             description="Record a learning or insight from a sprint retrospective.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "sprint": {
@@ -104,7 +104,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_knowledge",
             description="Search captured decisions and learnings. Useful for finding relevant past decisions.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -127,7 +127,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_decisions",
             description="List architectural decisions with optional filters.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "status": {
@@ -151,7 +151,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_learnings",
             description="List retrospective learnings with optional filters.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "sprint": {
@@ -174,7 +174,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="generate_handover_summary",
             description="Generate a handover package summarizing the semester's decisions, learnings, and recommendations.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "semester": {
@@ -192,7 +192,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_handover",
             description="Get an existing handover package for a semester.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "semester": {
@@ -206,7 +206,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="review_handover",
             description="Mark a handover package as reviewed and add reviewer notes. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "package_id": {
@@ -230,7 +230,7 @@ def list_tools() -> list[Tool]:
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ============================================================================
@@ -304,7 +304,7 @@ async def handle_capture_decision(
         ]
 
     except Exception as e:
-        logger.error(f"Error saving decision: {e}", exc_info=True)
+        logger.exception("Error saving decision")
         return [
             TextContent(
                 type="text",
@@ -368,7 +368,7 @@ async def handle_list_decisions(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error listing decisions: {e}", exc_info=True)
+        logger.exception("Error listing decisions")
         return [TextContent(type="text", text=f"Error listing decisions: {e}")]
 
 
@@ -442,7 +442,7 @@ async def handle_capture_lesson(
         ]
 
     except Exception as e:
-        logger.error(f"Error saving learning: {e}", exc_info=True)
+        logger.exception("Error saving learning")
         return [TextContent(type="text", text=f"Error saving learning: {e}")]
 
 
@@ -504,7 +504,7 @@ async def handle_list_learnings(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error listing learnings: {e}", exc_info=True)
+        logger.exception("Error listing learnings")
         return [TextContent(type="text", text=f"Error listing learnings: {e}")]
 
 
@@ -573,7 +573,7 @@ async def handle_search_knowledge(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching knowledge: {e}", exc_info=True)
+        logger.exception("Error searching knowledge")
         return [TextContent(type="text", text=f"Error searching knowledge: {e}")]
 
 
@@ -615,8 +615,8 @@ async def handle_generate_handover_summary(
 
         # Generate executive summary
         summary_parts = [
-            f"This handover covers {len(accepted_decisions)} architectural decisions "
-            f"and {len(learnings)} retrospective learnings from {semester}.",
+            (f"This handover covers {len(accepted_decisions)} architectural decisions "
+            f"and {len(learnings)} retrospective learnings from {semester}."),
         ]
         if to_improve:
             summary_parts.append(f"Key areas for improvement: {len(to_improve)} items identified.")
@@ -704,7 +704,7 @@ async def handle_generate_handover_summary(
         return [TextContent(type="text", text="\n".join(output))]
 
     except Exception as e:
-        logger.error(f"Error generating handover: {e}", exc_info=True)
+        logger.exception("Error generating handover")
         return [TextContent(type="text", text=f"Error generating handover: {e}")]
 
 
@@ -765,7 +765,7 @@ async def handle_review_handover(
             ]
 
     except Exception as e:
-        logger.error(f"Error reviewing handover: {e}", exc_info=True)
+        logger.exception("Error reviewing handover")
         return [TextContent(type="text", text=f"Error reviewing handover: {e}")]
 
 
@@ -814,5 +814,5 @@ async def handle_get_handover(
         return [TextContent(type="text", text="\n".join(output))]
 
     except Exception as e:
-        logger.error(f"Error getting handover: {e}", exc_info=True)
+        logger.exception("Error getting handover")
         return [TextContent(type="text", text=f"Error getting handover: {e}")]

@@ -20,7 +20,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="explain_for_discipline",
             description="Re-explain a concept or response for a different disciplinary background (CS, Interaction Design, Business, Health).",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "target_discipline": {
@@ -39,7 +39,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="compare_perspectives",
             description="Show how different disciplines would approach or understand a topic or design decision.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "topic": {
@@ -53,7 +53,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="translate_term",
             description="Translate a technical term for a specific discipline or all disciplines.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "term": {
@@ -72,7 +72,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_discipline_profile",
             description="Get detailed information about a discipline profile including vocabulary emphasis and explanation style.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "discipline": {
@@ -87,7 +87,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_disciplines",
             description="List all available discipline profiles with summaries.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -161,8 +161,8 @@ async def handle_explain_for_discipline(
                 "",
                 f"*Explanation style: {profile.explanation_style.value}*",
                 "",
-                f"This concept should be explained with focus on: "
-                f"{', '.join(profile.vocabulary_emphasis[:3])}",
+                (f"This concept should be explained with focus on: "
+                f"{', '.join(profile.vocabulary_emphasis[:3])}"),
                 "",
             ])
 
@@ -248,8 +248,8 @@ async def handle_compare_perspectives(
 
     lines.extend([
         "---",
-        "*These perspectives highlight how different backgrounds "
-        "approach the same technical concepts with different priorities.*",
+        ("*These perspectives highlight how different backgrounds "
+        "approach the same technical concepts with different priorities.*"),
     ])
 
     return [TextContent(type="text", text="\n".join(lines))]
@@ -447,11 +447,11 @@ async def handle_list_disciplines(
 
     lines.extend([
         "",
-        "Use `explain_for_discipline` to get explanations adapted for a "
-        "specific discipline.",
+        ("Use `explain_for_discipline` to get explanations adapted for a "
+        "specific discipline."),
         "",
-        "Use `compare_perspectives` to see how different disciplines "
-        "approach the same topic.",
+        ("Use `compare_perspectives` to see how different disciplines "
+        "approach the same topic."),
     ])
 
     return [TextContent(type="text", text="\n".join(lines))]

@@ -51,8 +51,8 @@ class KeywordSearchAdapter:
                     frontmatter = yaml.safe_load(parts[1])
                     body = parts[2]
                     return frontmatter or {}, body
-            except Exception:
-                pass
+            except yaml.YAMLError as e:
+                logger.warning(f"Invalid frontmatter, treating as plain markdown: {e}")
         return {}, content
 
     def _scan_files(self) -> list[Path]:
@@ -133,7 +133,7 @@ class KeywordSearchAdapter:
                     )
                 )
 
-            except Exception as e:
+            except (OSError, UnicodeDecodeError) as e:
                 logger.warning(f"Error reading {md_path}: {e}")
 
         # Sort by score descending
@@ -158,7 +158,7 @@ class KeywordSearchAdapter:
                         source=frontmatter.get("source"),
                     )
                 )
-            except Exception as e:
+            except (OSError, UnicodeDecodeError) as e:
                 logger.warning(f"Error reading {md_path}: {e}")
 
         return docs

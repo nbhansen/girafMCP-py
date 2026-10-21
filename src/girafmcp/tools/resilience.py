@@ -9,8 +9,8 @@ import logging
 from mcp.types import TextContent, Tool
 
 from girafmcp.core.services.resilience_service import (
-    ResilienceService,
     ResilienceMode,
+    ResilienceService,
 )
 from girafmcp.core.session import SessionState
 
@@ -23,7 +23,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="report_error_found",
             description="Report a suspected error in AI-generated code or guidance. Use when you detect an issue that needs correction.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "tool_name": {
@@ -45,7 +45,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="configure_resilience_test",
             description="Configure resilience testing for a team. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "team_id": {
@@ -68,7 +68,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_resilience_status",
             description="Get current resilience testing status for the session.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -77,7 +77,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_resilience_metrics",
             description="Get error detection metrics for research analysis. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "session_id": {

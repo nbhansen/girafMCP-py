@@ -2,12 +2,15 @@
 Tests for ExtractionService.
 """
 
-import pytest
+import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 import yaml
 
 from girafmcp.core.services.extraction_service import ExtractionService
+
 
 class TestExtractionService:
     
@@ -64,10 +67,9 @@ class TestExtractionService:
         md_path = extracted_dir / "test.md"
         md_path.touch()
         
-        # Ensure MD is newer (touch updates mtime)
-        import time
-        time.sleep(0.01)
-        md_path.touch()
+        # Ensure MD is newer than the PDF
+        pdf_mtime = pdf_path.stat().st_mtime
+        os.utime(md_path, (pdf_mtime + 1, pdf_mtime + 1))
         
         with patch("girafmcp.core.services.extraction_service.pymupdf4llm") as mock_mu:
             result = await service.extract_all()

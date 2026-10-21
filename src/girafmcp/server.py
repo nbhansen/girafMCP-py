@@ -5,19 +5,37 @@ and domain knowledge to help students working on the GIRAF project.
 """
 
 import asyncio
+import logging
 import os
-from typing import Any, AsyncGenerator, cast
+from collections.abc import AsyncGenerator
+from typing import Any
 
-from mcp.server import Server
+from mcp.server import Server, ServerRequestContext
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import (
+    CallToolRequestParams,
+    CallToolResult,
+    ContentBlock,
+    ListToolsResult,
+    PaginatedRequestParams,
+    TextContent,
+    Tool,
+)
 
 from girafmcp.core.container import DependencyContainer
 from girafmcp.core.session import get_current_session
-from girafmcp.tools import context, discipline, github, knowledge, projects, research, resilience, search
+from girafmcp.tools import (
+    context,
+    discipline,
+    github,
+    knowledge,
+    projects,
+    research,
+    resilience,
+    search,
+)
 
-# Create server instance
-server = Server("giraf-mcp")
+logger = logging.getLogger(__name__)
 
 # Initialize dependency container
 container = DependencyContainer()
@@ -26,7 +44,6 @@ container = DependencyContainer()
 # === Tool Definitions ===
 
 
-@server.list_tools()  # type: ignore
 async def list_tools() -> list[Tool]:
     """List all available tools."""
     tools: list[Tool] = []
@@ -44,7 +61,6 @@ async def list_tools() -> list[Tool]:
     return tools
 
 
-@server.call_tool()  # type: ignore
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
 
@@ -339,7 +355,31 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextConte
 
     This is used by request_more_detail to re-run the previous query.
     """
-    return cast(list[TextContent], await call_tool(name, arguments))
+    return await call_tool(name, arguments)
+
+
+# === MCP Protocol Handlers ===
+
+
+async def _on_list_tools(
+    ctx: ServerRequestContext[Any], params: PaginatedRequestParams | None
+) -> ListToolsResult:
+    return ListToolsResult(tools=await list_tools())
+
+
+async def _on_call_tool(
+    ctx: ServerRequestContext[Any], params: CallToolRequestParams
+) -> CallToolResult:
+    try:
+        content: list[ContentBlock] = [*await call_tool(params.name, params.arguments or {})]
+    except Exception as e:
+        # Report tool failures to the client as an error result, not a protocol error
+        logger.exception("Tool %s failed", params.name)
+        return CallToolResult(content=[TextContent(type="text", text=str(e))], is_error=True)
+    return CallToolResult(content=content)
+
+
+server = Server("giraf-mcp", on_list_tools=_on_list_tools, on_call_tool=_on_call_tool)
 
 
 # === Entry Point ===
@@ -395,12 +435,13 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
         host: Host to bind to. Use "0.0.0.0" for all interfaces.
         port: Port to listen on.
     """
+    import logging
+
+    import uvicorn
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
-    from starlette.routing import Route
     from starlette.responses import JSONResponse
-    import uvicorn
-    import logging
+    from starlette.routing import Route
 
     logger = logging.getLogger(__name__)
 

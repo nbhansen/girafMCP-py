@@ -6,15 +6,14 @@ from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
-
 from mcp.types import TextContent
 
-from girafmcp.core.session import SessionState
 from girafmcp.core.services.guardrails_service import (
-    GuardrailsService,
     GuardrailsConfig,
+    GuardrailsService,
 )
-from girafmcp.middleware import ToolContext, create_context
+from girafmcp.core.session import SessionState
+from girafmcp.middleware import ToolContext
 from girafmcp.middleware.guardrails import GuardrailsMiddleware
 
 

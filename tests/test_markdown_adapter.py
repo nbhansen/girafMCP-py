@@ -2,9 +2,12 @@
 Tests for MarkdownAdapter - parsing extracted artifacts.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from girafmcp.adapters.markdown_adapter import MarkdownAdapter
+
 
 class TestMarkdownAdapter:
     

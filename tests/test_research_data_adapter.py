@@ -1,10 +1,11 @@
 """Tests for ResearchDataAdapter."""
 
-import pytest
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-import tempfile
 import os
+import tempfile
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import pytest
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.types import MetaSkillIndicators, QueryLog, QueryType
@@ -12,7 +13,7 @@ from girafmcp.core.types import MetaSkillIndicators, QueryLog, QueryType
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @pytest.fixture
@@ -131,7 +132,7 @@ class TestQueryLogging:
 
         team_a = await adapter.get_queries_by_team("team_a")
         assert len(team_a) == 2
-        assert {l.id for l in team_a} == {"a1", "a2"}
+        assert {log.id for log in team_a} == {"a1", "a2"}
 
     async def test_get_queries_by_team_with_time_range(
         self, adapter: ResearchDataAdapter

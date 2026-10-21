@@ -1,9 +1,11 @@
 """GitHub Projects V2 tool handlers."""
 
 import logging
+
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
+from girafmcp.core.types import ProjectItem
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ def list_tools() -> list[Tool]:
             name="list_github_projects",
             description="List all GitHub Projects V2 in the aau-giraf organization. "
             "Returns project titles, numbers, item counts, and URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "limit": {
@@ -31,7 +33,7 @@ def list_tools() -> list[Tool]:
             name="get_github_project",
             description="Get details about a specific GitHub Project V2 by its number. "
             "The number is visible in the project URL.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "project_number": {
@@ -46,7 +48,7 @@ def list_tools() -> list[Tool]:
             name="list_project_items",
             description="List items (issues, PRs, draft issues) in a GitHub Project V2. "
             "Returns item titles, types, status, assignees, and labels.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "project_number": {
@@ -70,7 +72,7 @@ def list_tools() -> list[Tool]:
             name="check_github_projects_access",
             description="Check if the configured GitHub token has the 'read:project' scope "
             "required for accessing GitHub Projects V2.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -116,7 +118,7 @@ async def handle_list_github_projects(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error("Error listing GitHub projects", exc_info=True)
+        logger.exception("Error listing GitHub projects")
         return [TextContent(type="text", text=f"Error listing projects: {e}")]
 
 
@@ -163,7 +165,7 @@ async def handle_get_github_project(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error(f"Error getting project #{project_number}", exc_info=True)
+        logger.exception(f"Error getting project #{project_number}")
         return [TextContent(type="text", text=f"Error getting project: {e}")]
 
 
@@ -197,7 +199,7 @@ async def handle_list_project_items(
         ]
 
         # Group by status
-        by_status: dict[str, list] = {}
+        by_status: dict[str, list[ProjectItem]] = {}
         for item in items:
             status = item.status or "No Status"
             if status not in by_status:
@@ -238,7 +240,7 @@ async def handle_list_project_items(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error(f"Error listing items for project #{project_number}", exc_info=True)
+        logger.exception(f"Error listing items for project #{project_number}")
         return [TextContent(type="text", text=f"Error listing project items: {e}")]
 
 
@@ -282,5 +284,5 @@ async def handle_check_github_projects_access(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error checking GitHub projects access", exc_info=True)
+        logger.exception("Error checking GitHub projects access")
         return [TextContent(type="text", text=f"Error checking access: {e}")]

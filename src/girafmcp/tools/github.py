@@ -1,7 +1,9 @@
 """GitHub-related tool handlers."""
 
 import logging
+
 from mcp.types import TextContent, Tool
+
 from girafmcp.adapters import GitHubAdapter
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_repositories",
             description="List all GIRAF repositories with their descriptions and URLs",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -22,7 +24,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_file",
             description="Get the content of a file from a GIRAF repository. Returns content with a permalink for citation.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "repo": {
@@ -44,7 +46,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_code",
             description="Search for code across GIRAF repositories. Returns matching files with GitHub permalinks.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -62,7 +64,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_permalink",
             description="Generate a GitHub permalink to a specific file and line range for citation.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "repo": {
@@ -88,7 +90,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_wiki",
             description="Search the GIRAF wiki documentation. Fetches pages live from GitHub and performs keyword search. Returns matching pages with URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -107,7 +109,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_wiki_pages",
             description="List all pages in the GIRAF wiki. Returns page titles and URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -132,7 +134,7 @@ async def handle_list_repositories(adapter: GitHubAdapter) -> list[TextContent]:
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error listing repositories", exc_info=True)
+        logger.exception("Error listing repositories")
         return [TextContent(type="text", text=f"Error listing repositories: {e}")]
 
 
@@ -151,7 +153,7 @@ async def handle_get_file(
     except FileNotFoundError:
         return [TextContent(type="text", text=f"File not found: {repo}/{path}")]
     except Exception as e:
-        logger.error(f"Error fetching file {repo}/{path}", exc_info=True)
+        logger.exception(f"Error fetching file {repo}/{path}")
         return [TextContent(type="text", text=f"Error fetching file: {e}")]
 
 
@@ -172,7 +174,7 @@ async def handle_search_code(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching code for '{query}'", exc_info=True)
+        logger.exception(f"Error searching code for '{query}'")
         return [TextContent(type="text", text=f"Error searching code: {e}")]
 
 
@@ -212,7 +214,7 @@ async def handle_search_wiki(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching wiki for '{query}'", exc_info=True)
+        logger.exception(f"Error searching wiki for '{query}'")
         return [TextContent(type="text", text=f"Error searching wiki: {e}")]
 
 
@@ -228,5 +230,5 @@ async def handle_list_wiki_pages(adapter: GitHubAdapter) -> list[TextContent]:
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error listing wiki pages", exc_info=True)
+        logger.exception("Error listing wiki pages")
         return [TextContent(type="text", text=f"Error listing wiki pages: {e}")]

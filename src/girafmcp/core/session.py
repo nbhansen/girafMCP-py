@@ -5,16 +5,16 @@ Uses Python's contextvars for request-scoped session state:
 - Falls back gracefully in STDIO mode (single global context)
 """
 
+import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
-import uuid
 
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass

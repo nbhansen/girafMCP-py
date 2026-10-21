@@ -7,6 +7,7 @@ generate correct permalinks for source attribution.
 """
 
 import os
+
 import pytest
 
 from girafmcp.adapters.github_adapter import GitHubAdapter
@@ -68,7 +69,7 @@ class TestGitHubAdapter:
 
     async def test_handles_nonexistent_repo(self, adapter):
         """Should raise appropriate error for non-existent repos."""
-        with pytest.raises(Exception):  # Could be FileNotFoundError or similar
+        with pytest.raises(FileNotFoundError):
             await adapter.get_file("nonexistent-repo-12345", "README.md")
 
     async def test_get_file_with_specific_ref(self, adapter):

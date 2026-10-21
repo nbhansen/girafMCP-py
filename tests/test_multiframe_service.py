@@ -15,13 +15,12 @@ import pytest
 import yaml
 
 from girafmcp.core.services.multiframe_service import (
-    MultiFrameService,
-    MultiFrameConfig,
-    Discipline,
-    DisciplineProfile,
-    ExplanationStyle,
     CodeDepth,
+    Discipline,
+    ExplanationStyle,
     FramedExplanation,
+    MultiFrameConfig,
+    MultiFrameService,
 )
 
 

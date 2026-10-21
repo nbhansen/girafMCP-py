@@ -5,11 +5,12 @@ Tests are skipped if the scope is not available.
 """
 
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
-from girafmcp.core.types import Project, ProjectItem, TokenScopeResult
+from girafmcp.core.types import Project
 
 
 class TestGitHubProjectsAdapterUnit:
@@ -279,7 +280,6 @@ class TestGitHubProjectsAdapterMocked:
         self, adapter: GitHubProjectsAdapter
     ) -> None:
         """Should detect read:project scope."""
-        import httpx
 
         mock_response = MagicMock()
         mock_response.status_code = 200

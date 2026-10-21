@@ -11,7 +11,7 @@ import logging
 import random
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, cast
@@ -83,7 +83,7 @@ class ErrorReport:
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ResilienceConfig:
@@ -104,7 +104,7 @@ class ResilienceConfig:
                     self._config = yaml.safe_load(f) or {}
                 self._team_overrides = dict(self._config.get("team_assignments", {}))
                 logger.info(f"Loaded resilience config from {config_path}")
-            except Exception as e:
+            except (OSError, yaml.YAMLError, TypeError, ValueError) as e:
                 logger.warning(f"Failed to load resilience config: {e}")
                 self._config = {}
         else:
@@ -216,12 +216,12 @@ class ResilienceConfig:
         end_str = window.get("end")
 
         if start_str:
-            start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+            start = datetime.fromisoformat(start_str)
             if now < start:
                 return False
 
         if end_str:
-            end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+            end = datetime.fromisoformat(end_str)
             if now > end:
                 return False
 
@@ -264,9 +264,12 @@ class ResilienceService:
         """
         if config is None:
             import os
+
+            from girafmcp.core.paths import DATA_DIR
+
             config_path = os.environ.get(
                 "GIRAF_RESILIENCE_CONFIG",
-                "data/resilience_tests.yaml"
+                str(DATA_DIR / "resilience_tests.yaml"),
             )
             config = ResilienceConfig(Path(config_path))
 
@@ -467,11 +470,10 @@ class ResilienceService:
 
         elif error_type == ErrorType.API_MISUSE:
             # Suggest incorrect API usage
-            if "async" in response or "await" in response:
-                if "await " in response:
-                    # Remove an await
-                    modified = response.replace("await ", "", 1)
-                    return modified, "API misuse: removed required 'await'"
+            if "await " in response:
+                # Remove an await
+                modified = response.replace("await ", "", 1)
+                return modified, "API misuse: removed required 'await'"
 
         # No suitable injection point found
         return response, ""

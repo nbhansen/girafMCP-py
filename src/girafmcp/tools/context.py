@@ -1,7 +1,9 @@
 """Context, domain knowledge, and persona tool handlers."""
 
 import logging
+
 from mcp.types import TextContent, Tool
+
 from girafmcp.adapters import FileAdapter
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_semester_context",
             description="Get the current semester context from local YAML configuration, including semester focus, priorities, known issues, and recent decisions. This reads local project configuration, not GitHub Projects.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -22,7 +24,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_personas",
             description="List available user personas. Personas help tailor responses to different user backgrounds (CS student, pedagogy student, supervisor, etc.)",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -31,7 +33,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_persona",
             description="Get details about a specific persona including communication style and focus areas.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "persona_id": {
@@ -45,7 +47,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_domain_knowledge",
             description="Search domain knowledge about autism, visual schedules, sensory considerations, and other background information relevant to GIRAF users.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -64,7 +66,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_domain_topics",
             description="List all available domain knowledge topics (autism basics, visual schedules, sensory considerations, etc.)",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -93,7 +95,7 @@ async def handle_get_semester_context(adapter: FileAdapter) -> list[TextContent]
     except FileNotFoundError:
         return [TextContent(type="text", text="Project context file not found. Please create data/context.yaml")]
     except Exception as e:
-        logger.error("Error reading project context", exc_info=True)
+        logger.exception("Error reading project context")
         return [TextContent(type="text", text=f"Error reading project context: {e}")]
 
 
@@ -117,7 +119,7 @@ async def handle_list_personas(adapter: FileAdapter) -> list[TextContent]:
     except FileNotFoundError:
         return [TextContent(type="text", text="Personas file not found. Please create data/personas.yaml")]
     except Exception as e:
-        logger.error("Error reading personas", exc_info=True)
+        logger.exception("Error reading personas")
         return [TextContent(type="text", text=f"Error reading personas: {e}")]
 
 
@@ -144,7 +146,7 @@ async def handle_get_persona(adapter: FileAdapter, persona_id: str) -> list[Text
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error getting persona {persona_id}", exc_info=True)
+        logger.exception(f"Error getting persona {persona_id}")
         return [TextContent(type="text", text=f"Error getting persona: {e}")]
 
 
@@ -173,7 +175,7 @@ async def handle_search_domain_knowledge(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching domain knowledge for '{query}'", exc_info=True)
+        logger.exception(f"Error searching domain knowledge for '{query}'")
         return [TextContent(type="text", text=f"Error searching domain knowledge: {e}")]
 
 
@@ -190,5 +192,5 @@ async def handle_list_domain_topics(adapter: FileAdapter) -> list[TextContent]:
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error listing domain topics", exc_info=True)
+        logger.exception("Error listing domain topics")
         return [TextContent(type="text", text=f"Error listing domain topics: {e}")]

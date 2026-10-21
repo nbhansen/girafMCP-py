@@ -14,8 +14,8 @@ from mcp.types import TextContent
 
 from girafmcp.core.features import is_resilience_enabled
 from girafmcp.core.services.resilience_service import (
-    ResilienceService,
     ResilienceMode,
+    ResilienceService,
 )
 from girafmcp.middleware.base import Middleware, NextMiddleware, ToolContext
 
@@ -208,6 +208,7 @@ def create_resilience_middleware(
         Configured ResilienceMiddleware
     """
     from pathlib import Path
+
     from girafmcp.core.services.resilience_service import ResilienceConfig
 
     config = None

@@ -51,7 +51,7 @@ def run_extraction_task(source_path: Path, target_path: Path, tags: list[str]) -
             f.write(md_content)
     except Exception as e:
         # Re-raise to be caught by the pool error handler or main loop
-        raise RuntimeError(f"Failed to extract {source_path}: {str(e)}") from e
+        raise RuntimeError(f"Failed to extract {source_path}: {e!s}") from e
 
 
 class ExtractionService:
@@ -128,7 +128,7 @@ class ExtractionService:
                             pool.apply(run_extraction_task, args=(pdf_path, target_path, tags))
                             result.files_processed += 1
                             logger.info(f"Successfully extracted: {pdf_path.name}")
-                        except Exception as e:
+                        except (OSError, RuntimeError, ValueError) as e:
                             error_msg = f"Error extracting {pdf_path}: {e}"
                             logger.error(error_msg)
                             result.errors.append(error_msg)
@@ -140,7 +140,7 @@ class ExtractionService:
                         run_extraction_task(pdf_path, target_path, tags)
                         result.files_processed += 1
                         logger.info(f"Successfully extracted: {pdf_path.name}")
-                    except Exception as e:
+                    except (OSError, RuntimeError, ValueError) as e:
                         error_msg = f"Error extracting {pdf_path}: {e}"
                         logger.error(error_msg)
                         result.errors.append(error_msg)
@@ -164,5 +164,6 @@ class ExtractionService:
             with open(meta_path, "r", encoding="utf-8") as f:
                 meta = yaml.safe_load(f) or {}
                 return list(meta.get("tags", []))
-        except Exception:
+        except (OSError, yaml.YAMLError, AttributeError, TypeError) as e:
+            logger.warning(f"Ignoring unreadable {meta_path}: {e}")
             return []
