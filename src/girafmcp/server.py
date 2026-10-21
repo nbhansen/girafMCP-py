@@ -7,7 +7,7 @@ and domain knowledge to help students working on the GIRAF project.
 import asyncio
 import logging
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Any
 
 from mcp.server import Server, ServerRequestContext
@@ -61,293 +61,219 @@ async def list_tools() -> list[Tool]:
     return tools
 
 
+ToolHandler = Callable[[dict[str, Any]], Awaitable[list[TextContent]]]
+
+# Maps each tool name to its handler; arguments come straight from the MCP request
+TOOL_HANDLERS: dict[str, ToolHandler] = {
+    # === GitHub Tools ===
+    "list_repositories": lambda a: github.handle_list_repositories(container.github_adapter),
+    "get_file": lambda a: github.handle_get_file(
+        container.github_adapter,
+        repo=a["repo"],
+        path=a["path"],
+        ref=a.get("ref"),
+    ),
+    "search_code": lambda a: github.handle_search_code(
+        container.github_adapter,
+        query=a["query"],
+        repo=a.get("repo"),
+    ),
+    "get_permalink": lambda a: github.handle_get_permalink(
+        container.github_adapter,
+        repo=a["repo"],
+        path=a["path"],
+        line=a.get("line"),
+        end_line=a.get("end_line"),
+    ),
+    "search_wiki": lambda a: github.handle_search_wiki(
+        container.github_adapter,
+        query=a["query"],
+        limit=a.get("limit", 5),
+    ),
+    "list_wiki_pages": lambda a: github.handle_list_wiki_pages(container.github_adapter),
+    # === Search Tools ===
+    "search_documentation": lambda a: search.handle_search_documentation(
+        container.keyword_search_adapter,
+        query=a["query"],
+        limit=a.get("limit", 5),
+    ),
+    "search_static_documents": lambda a: search.handle_search_static_documents(
+        container.keyword_search_adapter,
+        query=a["query"],
+        limit=a.get("limit", 5),
+        tags=a.get("tags"),
+    ),
+    "list_static_documents": lambda a: search.handle_list_static_documents(container.keyword_search_adapter),
+    # === Context Tools ===
+    "get_semester_context": lambda a: context.handle_get_semester_context(container.file_adapter),
+    "list_personas": lambda a: context.handle_list_personas(container.file_adapter),
+    "get_persona": lambda a: context.handle_get_persona(
+        container.file_adapter, persona_id=a["persona_id"]
+    ),
+    "search_domain_knowledge": lambda a: context.handle_search_domain_knowledge(
+        container.file_adapter,
+        query=a["query"],
+        limit=a.get("limit", 5),
+    ),
+    "list_domain_topics": lambda a: context.handle_list_domain_topics(container.file_adapter),
+    # === Research Feature Tools ===
+    "set_session_metadata": lambda a: research.handle_set_session_metadata(
+        session=get_current_session(),
+        team_id=a.get("team_id"),
+        role=a.get("role"),
+        discipline=a.get("discipline"),
+    ),
+    "request_more_detail": lambda a: research.handle_request_more_detail(
+        session=get_current_session(),
+        guardrails_service=container.guardrails_service,
+        dispatch_fn=_dispatch_tool,
+    ),
+    "configure_guardrails": lambda a: research.handle_configure_guardrails(
+        guardrails_service=container.guardrails_service,
+        team_id=a["team_id"],
+        enabled=a.get("enabled"),
+        mode=a.get("mode"),
+    ),
+    "get_guardrails_status": lambda a: research.handle_get_guardrails_status(
+        guardrails_service=container.guardrails_service,
+        session=get_current_session(),
+    ),
+    "get_feature_status": lambda a: research.handle_get_feature_status(),
+    "export_query_logs": lambda a: research.handle_export_query_logs(
+        adapter=container.research_data_adapter,
+        output_path=a.get("output_path"),
+        start_date=a.get("start_date"),
+        end_date=a.get("end_date"),
+        team_id=a.get("team_id"),
+    ),
+    # === Knowledge Capture Tools ===
+    "capture_decision": lambda a: knowledge.handle_capture_decision(
+        adapter=container.research_data_adapter,
+        session=get_current_session(),
+        title=a["title"],
+        context=a["context"],
+        decision=a["decision"],
+        rationale=a["rationale"],
+        alternatives=a.get("alternatives"),
+        consequences=a.get("consequences"),
+        related_issues=a.get("related_issues"),
+        related_files=a.get("related_files"),
+        tags=a.get("tags"),
+        discipline_notes=a.get("discipline_notes"),
+    ),
+    "capture_lesson": lambda a: knowledge.handle_capture_lesson(
+        adapter=container.research_data_adapter,
+        session=get_current_session(),
+        sprint=a["sprint"],
+        category=a["category"],
+        description=a["description"],
+        related_decisions=a.get("related_decisions"),
+    ),
+    "search_knowledge": lambda a: knowledge.handle_search_knowledge(
+        adapter=container.research_data_adapter,
+        query=a["query"],
+        type=a.get("type", "all"),
+        limit=a.get("limit", 5),
+    ),
+    "list_decisions": lambda a: knowledge.handle_list_decisions(
+        adapter=container.research_data_adapter,
+        status=a.get("status"),
+        tags=a.get("tags"),
+        limit=a.get("limit", 10),
+    ),
+    "list_learnings": lambda a: knowledge.handle_list_learnings(
+        adapter=container.research_data_adapter,
+        sprint=a.get("sprint"),
+        category=a.get("category"),
+        limit=a.get("limit", 20),
+    ),
+    "generate_handover_summary": lambda a: knowledge.handle_generate_handover_summary(
+        adapter=container.research_data_adapter,
+        semester=a["semester"],
+        additional_notes=a.get("additional_notes"),
+    ),
+    "get_handover": lambda a: knowledge.handle_get_handover(
+        adapter=container.research_data_adapter,
+        semester=a["semester"],
+    ),
+    "review_handover": lambda a: knowledge.handle_review_handover(
+        adapter=container.research_data_adapter,
+        package_id=a["package_id"],
+        approved=a["approved"],
+        notes=a.get("notes"),
+    ),
+    # === Resilience Testing Tools ===
+    "report_error_found": lambda a: resilience.handle_report_error_found(
+        service=container.resilience_service,
+        session=get_current_session(),
+        tool_name=a["tool_name"],
+        error_description=a["error_description"],
+        proposed_fix=a.get("proposed_fix"),
+    ),
+    "configure_resilience_test": lambda a: resilience.handle_configure_resilience_test(
+        service=container.resilience_service,
+        team_id=a["team_id"],
+        mode=a.get("mode"),
+        enabled=a.get("enabled"),
+    ),
+    "get_resilience_status": lambda a: resilience.handle_get_resilience_status(
+        service=container.resilience_service,
+        session=get_current_session(),
+    ),
+    "get_resilience_metrics": lambda a: resilience.handle_get_resilience_metrics(
+        service=container.resilience_service,
+        session_id=a.get("session_id"),
+    ),
+    # === Cross-Disciplinary Framing Tools ===
+    "explain_for_discipline": lambda a: discipline.handle_explain_for_discipline(
+        service=container.multiframe_service,
+        session=get_current_session(),
+        target_discipline=a["target_discipline"],
+        concept=a.get("concept"),
+    ),
+    "compare_perspectives": lambda a: discipline.handle_compare_perspectives(
+        service=container.multiframe_service,
+        topic=a["topic"],
+    ),
+    "translate_term": lambda a: discipline.handle_translate_term(
+        service=container.multiframe_service,
+        term=a["term"],
+        target_discipline=a.get("target_discipline"),
+    ),
+    "get_discipline_profile": lambda a: discipline.handle_get_discipline_profile(
+        service=container.multiframe_service,
+        discipline=a["discipline"],
+    ),
+    "list_disciplines": lambda a: discipline.handle_list_disciplines(
+        service=container.multiframe_service,
+    ),
+    # === GitHub Projects V2 Tools ===
+    "list_github_projects": lambda a: projects.handle_list_github_projects(
+        adapter=container.github_projects_adapter,
+        limit=a.get("limit", 20),
+    ),
+    "get_github_project": lambda a: projects.handle_get_github_project(
+        adapter=container.github_projects_adapter,
+        project_number=a["project_number"],
+    ),
+    "list_project_items": lambda a: projects.handle_list_project_items(
+        adapter=container.github_projects_adapter,
+        project_number=a["project_number"],
+        limit=a.get("limit", 50),
+        status_filter=a.get("status_filter"),
+    ),
+    "check_github_projects_access": lambda a: projects.handle_check_github_projects_access(
+        adapter=container.github_projects_adapter,
+    ),
+}
+
+
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
-
-    # === GitHub Tools ===
-    if name == "list_repositories":
-        return await github.handle_list_repositories(container.github_adapter)
-
-    elif name == "get_file":
-        return await github.handle_get_file(
-            container.github_adapter,
-            repo=arguments["repo"],
-            path=arguments["path"],
-            ref=arguments.get("ref"),
-        )
-
-    elif name == "search_code":
-        return await github.handle_search_code(
-            container.github_adapter,
-            query=arguments["query"],
-            repo=arguments.get("repo"),
-        )
-
-    elif name == "get_permalink":
-        return await github.handle_get_permalink(
-            container.github_adapter,
-            repo=arguments["repo"],
-            path=arguments["path"],
-            line=arguments.get("line"),
-            end_line=arguments.get("end_line"),
-        )
-    
-    elif name == "search_wiki":
-        return await github.handle_search_wiki(
-            container.github_adapter,
-            query=arguments["query"],
-            limit=arguments.get("limit", 5),
-        )
-
-    elif name == "list_wiki_pages":
-        return await github.handle_list_wiki_pages(container.github_adapter)
-
-    # === Search Tools ===
-    elif name == "search_documentation":
-        return await search.handle_search_documentation(
-            container.keyword_search_adapter,
-            query=arguments["query"],
-            limit=arguments.get("limit", 5),
-        )
-
-    elif name == "search_static_documents":
-        return await search.handle_search_static_documents(
-            container.keyword_search_adapter,
-            query=arguments["query"],
-            limit=arguments.get("limit", 5),
-            tags=arguments.get("tags"),
-        )
-
-    elif name == "list_static_documents":
-        return await search.handle_list_static_documents(container.keyword_search_adapter)
-
-    # === Context Tools ===
-    elif name == "get_semester_context":
-        return await context.handle_get_semester_context(container.file_adapter)
-
-    elif name == "list_personas":
-        return await context.handle_list_personas(container.file_adapter)
-
-    elif name == "get_persona":
-        return await context.handle_get_persona(
-            container.file_adapter, persona_id=arguments["persona_id"]
-        )
-
-    elif name == "search_domain_knowledge":
-        return await context.handle_search_domain_knowledge(
-            container.file_adapter,
-            query=arguments["query"],
-            limit=arguments.get("limit", 5),
-        )
-
-    elif name == "list_domain_topics":
-        return await context.handle_list_domain_topics(container.file_adapter)
-
-    # === Research Feature Tools ===
-    elif name == "set_session_metadata":
-        return await research.handle_set_session_metadata(
-            session=get_current_session(),
-            team_id=arguments.get("team_id"),
-            role=arguments.get("role"),
-            discipline=arguments.get("discipline"),
-        )
-
-    elif name == "request_more_detail":
-        return await research.handle_request_more_detail(
-            session=get_current_session(),
-            guardrails_service=container.guardrails_service,
-            dispatch_fn=_dispatch_tool,
-        )
-
-    elif name == "configure_guardrails":
-        return await research.handle_configure_guardrails(
-            guardrails_service=container.guardrails_service,
-            team_id=arguments["team_id"],
-            enabled=arguments.get("enabled"),
-            mode=arguments.get("mode"),
-        )
-
-    elif name == "get_guardrails_status":
-        return await research.handle_get_guardrails_status(
-            guardrails_service=container.guardrails_service,
-            session=get_current_session(),
-        )
-
-    elif name == "get_feature_status":
-        return await research.handle_get_feature_status()
-        
-    elif name == "export_query_logs":
-        return await research.handle_export_query_logs(
-            adapter=container.research_data_adapter,
-            output_path=arguments.get("output_path"),
-            start_date=arguments.get("start_date"),
-            end_date=arguments.get("end_date"),
-            team_id=arguments.get("team_id"),
-        )
-
-    # === Knowledge Capture Tools ===
-    elif name == "capture_decision":
-        return await knowledge.handle_capture_decision(
-            adapter=container.research_data_adapter,
-            session=get_current_session(),
-            title=arguments["title"],
-            context=arguments["context"],
-            decision=arguments["decision"],
-            rationale=arguments["rationale"],
-            alternatives=arguments.get("alternatives"),
-            consequences=arguments.get("consequences"),
-            related_issues=arguments.get("related_issues"),
-            related_files=arguments.get("related_files"),
-            tags=arguments.get("tags"),
-            discipline_notes=arguments.get("discipline_notes"),
-        )
-
-    elif name == "capture_lesson":
-        return await knowledge.handle_capture_lesson(
-            adapter=container.research_data_adapter,
-            session=get_current_session(),
-            sprint=arguments["sprint"],
-            category=arguments["category"],
-            description=arguments["description"],
-            related_decisions=arguments.get("related_decisions"),
-        )
-
-    elif name == "search_knowledge":
-        return await knowledge.handle_search_knowledge(
-            adapter=container.research_data_adapter,
-            query=arguments["query"],
-            type=arguments.get("type", "all"),
-            limit=arguments.get("limit", 5),
-        )
-
-    elif name == "list_decisions":
-        return await knowledge.handle_list_decisions(
-            adapter=container.research_data_adapter,
-            status=arguments.get("status"),
-            tags=arguments.get("tags"),
-            limit=arguments.get("limit", 10),
-        )
-
-    elif name == "list_learnings":
-        return await knowledge.handle_list_learnings(
-            adapter=container.research_data_adapter,
-            sprint=arguments.get("sprint"),
-            category=arguments.get("category"),
-            limit=arguments.get("limit", 20),
-        )
-
-    elif name == "generate_handover_summary":
-        return await knowledge.handle_generate_handover_summary(
-            adapter=container.research_data_adapter,
-            semester=arguments["semester"],
-            additional_notes=arguments.get("additional_notes"),
-        )
-
-    elif name == "get_handover":
-        return await knowledge.handle_get_handover(
-            adapter=container.research_data_adapter,
-            semester=arguments["semester"],
-        )
-
-    elif name == "review_handover":
-        return await knowledge.handle_review_handover(
-            adapter=container.research_data_adapter,
-            package_id=arguments["package_id"],
-            approved=arguments["approved"],
-            notes=arguments.get("notes"),
-        )
-
-    # === Resilience Testing Tools ===
-    elif name == "report_error_found":
-        return await resilience.handle_report_error_found(
-            service=container.resilience_service,
-            session=get_current_session(),
-            tool_name=arguments["tool_name"],
-            error_description=arguments["error_description"],
-            proposed_fix=arguments.get("proposed_fix"),
-        )
-
-    elif name == "configure_resilience_test":
-        return await resilience.handle_configure_resilience_test(
-            service=container.resilience_service,
-            team_id=arguments["team_id"],
-            mode=arguments.get("mode"),
-            enabled=arguments.get("enabled"),
-        )
-
-    elif name == "get_resilience_status":
-        return await resilience.handle_get_resilience_status(
-            service=container.resilience_service,
-            session=get_current_session(),
-        )
-
-    elif name == "get_resilience_metrics":
-        return await resilience.handle_get_resilience_metrics(
-            service=container.resilience_service,
-            session_id=arguments.get("session_id"),
-        )
-
-    # === Cross-Disciplinary Framing Tools ===
-    elif name == "explain_for_discipline":
-        return await discipline.handle_explain_for_discipline(
-            service=container.multiframe_service,
-            session=get_current_session(),
-            target_discipline=arguments["target_discipline"],
-            concept=arguments.get("concept"),
-        )
-
-    elif name == "compare_perspectives":
-        return await discipline.handle_compare_perspectives(
-            service=container.multiframe_service,
-            topic=arguments["topic"],
-        )
-
-    elif name == "translate_term":
-        return await discipline.handle_translate_term(
-            service=container.multiframe_service,
-            term=arguments["term"],
-            target_discipline=arguments.get("target_discipline"),
-        )
-
-    elif name == "get_discipline_profile":
-        return await discipline.handle_get_discipline_profile(
-            service=container.multiframe_service,
-            discipline=arguments["discipline"],
-        )
-
-    elif name == "list_disciplines":
-        return await discipline.handle_list_disciplines(
-            service=container.multiframe_service,
-        )
-
-    # === GitHub Projects V2 Tools ===
-    elif name == "list_github_projects":
-        return await projects.handle_list_github_projects(
-            adapter=container.github_projects_adapter,
-            limit=arguments.get("limit", 20),
-        )
-
-    elif name == "get_github_project":
-        return await projects.handle_get_github_project(
-            adapter=container.github_projects_adapter,
-            project_number=arguments["project_number"],
-        )
-
-    elif name == "list_project_items":
-        return await projects.handle_list_project_items(
-            adapter=container.github_projects_adapter,
-            project_number=arguments["project_number"],
-            limit=arguments.get("limit", 50),
-            status_filter=arguments.get("status_filter"),
-        )
-
-    elif name == "check_github_projects_access":
-        return await projects.handle_check_github_projects_access(
-            adapter=container.github_projects_adapter,
-        )
-
-    else:
+    handler = TOOL_HANDLERS.get(name)
+    if handler is None:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
+    return await handler(arguments)
 
 
 async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:

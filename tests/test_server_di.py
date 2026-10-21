@@ -2,7 +2,7 @@
 
 import pytest
 
-from girafmcp.server import call_tool, list_tools
+from girafmcp.server import TOOL_HANDLERS, call_tool, list_tools
 
 
 class TestServerWiring:
@@ -21,6 +21,12 @@ class TestServerWiring:
         assert "search_documentation" in tool_names
         assert "capture_decision" in tool_names
         assert "report_error_found" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_every_listed_tool_has_a_handler(self, patch_server_container):
+        """Listed tools and dispatch handlers must stay in sync."""
+        listed = {t.name for t in await list_tools()}
+        assert listed == set(TOOL_HANDLERS)
 
     @pytest.mark.asyncio
     async def test_call_tool_dispatches_correctly(self, patch_server_container, mock_container):
