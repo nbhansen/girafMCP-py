@@ -20,9 +20,6 @@ from girafmcp.core.services.resilience_service import (
     ResilienceConfig,
     ResilienceMode,
     ErrorType,
-    ErrorDifficulty,
-    InjectedError,
-    ErrorReport,
 )
 
 

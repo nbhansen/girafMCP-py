@@ -1,7 +1,5 @@
 """Tests for session state management."""
 
-import pytest
-from datetime import datetime, timedelta
 
 from girafmcp.core.session import (
     SessionState,

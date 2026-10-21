@@ -6,7 +6,6 @@ import pytest
 from girafmcp.core.features import (
     Feature,
     FeatureRegistry,
-    FeatureState,
     is_logging_enabled,
     is_guardrails_enabled,
     is_resilience_enabled,

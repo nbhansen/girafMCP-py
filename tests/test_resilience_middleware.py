@@ -13,7 +13,6 @@ from girafmcp.core.session import SessionState
 from girafmcp.core.services.resilience_service import (
     ResilienceService,
     ResilienceConfig,
-    ResilienceMode,
 )
 from girafmcp.middleware import ToolContext
 from girafmcp.middleware.resilience import ResilienceMiddleware

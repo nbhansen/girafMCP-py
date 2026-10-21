@@ -10,7 +10,7 @@ from mcp.types import TextContent
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.session import SessionState, reset_session
-from girafmcp.middleware import ToolContext, create_context
+from girafmcp.middleware import ToolContext
 from girafmcp.middleware.logging import LoggingMiddleware
 
 
@@ -76,7 +76,7 @@ class TestLoggingMiddleware:
         async def next_fn(c: ToolContext) -> list[TextContent]:
             return await mock_dispatch(c.name, c.arguments)
 
-        result = await middleware.process(ctx, next_fn)
+        await middleware.process(ctx, next_fn)
 
         # Wait for async logging
         await asyncio.sleep(0.1)

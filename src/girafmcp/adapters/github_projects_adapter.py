@@ -35,7 +35,9 @@ class GitHubProjectsAdapter(GitHubProjectsPort):
         if self.token:
             self._headers["Authorization"] = f"Bearer {self.token}"
 
-    async def _graphql_query(self, query: str, variables: dict[str, Any] | None = None) -> dict:
+    async def _graphql_query(
+        self, query: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a GraphQL query.
 
         Args:
@@ -49,7 +51,7 @@ class GitHubProjectsAdapter(GitHubProjectsPort):
             httpx.HTTPStatusError: On HTTP errors.
             ValueError: On GraphQL errors.
         """
-        payload = {"query": query}
+        payload: dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = variables
 
@@ -61,14 +63,15 @@ class GitHubProjectsAdapter(GitHubProjectsPort):
                 timeout=30.0,
             )
             response.raise_for_status()
-            result = response.json()
+            result: dict[str, Any] = response.json()
 
             if "errors" in result:
                 errors = result["errors"]
                 error_messages = [e.get("message", str(e)) for e in errors]
                 raise ValueError(f"GraphQL errors: {'; '.join(error_messages)}")
 
-            return result.get("data", {})
+            data: dict[str, Any] = result.get("data") or {}
+            return data
 
     async def list_org_projects(self, limit: int = 20) -> list[Project]:
         """List all Projects V2 in the organization."""

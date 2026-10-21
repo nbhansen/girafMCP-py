@@ -3,7 +3,7 @@
 import pytest
 from mcp.types import TextContent
 
-from girafmcp.core.session import SessionState, reset_session
+from girafmcp.core.session import reset_session
 from girafmcp.middleware import (
     Middleware,
     MiddlewareChain,

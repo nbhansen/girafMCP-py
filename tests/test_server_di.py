@@ -1,7 +1,6 @@
 """Tests for server dependency injection and tool wiring."""
 
 import pytest
-from mcp.types import Tool
 
 from girafmcp.server import list_tools, call_tool
 

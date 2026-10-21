@@ -9,8 +9,6 @@ Tests cover:
 
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -509,8 +507,8 @@ class TestKnowledgeIntegration:
             ),
         ]
 
-        for l in learnings:
-            await adapter.save_learning(l)
+        for learning in learnings:
+            await adapter.save_learning(learning)
 
         # Verify data was stored
         decisions = await adapter.list_decisions()
@@ -526,7 +524,7 @@ class TestKnowledgeIntegration:
             semester="2025s1",
             executive_summary="Completed 2 architectural decisions and 3 retrospective learnings.",
             key_decisions=[d.id for d in decisions],
-            lessons_learned=[l.id for l in learnings],
+            lessons_learned=[learning.id for learning in learnings],
             known_issues=["Need better test coverage"],
             recommended_priorities=["Set up code coverage reporting"],
         )

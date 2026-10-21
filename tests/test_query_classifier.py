@@ -1,6 +1,5 @@
 """Tests for query classification service."""
 
-import pytest
 
 from girafmcp.core.services.query_classifier import (
     classify_query_type,

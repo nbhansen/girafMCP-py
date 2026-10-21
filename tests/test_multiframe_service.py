@@ -18,7 +18,6 @@ from girafmcp.core.services.multiframe_service import (
     MultiFrameService,
     MultiFrameConfig,
     Discipline,
-    DisciplineProfile,
     ExplanationStyle,
     CodeDepth,
     FramedExplanation,

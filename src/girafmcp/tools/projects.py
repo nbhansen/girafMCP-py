@@ -4,6 +4,7 @@ import logging
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
+from girafmcp.core.types import ProjectItem
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +198,7 @@ async def handle_list_project_items(
         ]
 
         # Group by status
-        by_status: dict[str, list] = {}
+        by_status: dict[str, list[ProjectItem]] = {}
         for item in items:
             status = item.status or "No Status"
             if status not in by_status:

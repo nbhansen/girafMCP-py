@@ -14,7 +14,7 @@ from girafmcp.core.services.guardrails_service import (
     GuardrailsService,
     GuardrailsConfig,
 )
-from girafmcp.middleware import ToolContext, create_context
+from girafmcp.middleware import ToolContext
 from girafmcp.middleware.guardrails import GuardrailsMiddleware
 
 

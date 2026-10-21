@@ -131,7 +131,7 @@ class TestQueryLogging:
 
         team_a = await adapter.get_queries_by_team("team_a")
         assert len(team_a) == 2
-        assert {l.id for l in team_a} == {"a1", "a2"}
+        assert {log.id for log in team_a} == {"a1", "a2"}
 
     async def test_get_queries_by_team_with_time_range(
         self, adapter: ResearchDataAdapter
