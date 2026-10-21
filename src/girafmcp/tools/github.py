@@ -15,7 +15,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_repositories",
             description="List all GIRAF repositories with their descriptions and URLs",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -24,7 +24,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_file",
             description="Get the content of a file from a GIRAF repository. Returns content with a permalink for citation.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "repo": {
@@ -46,7 +46,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_code",
             description="Search for code across GIRAF repositories. Returns matching files with GitHub permalinks.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -64,7 +64,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_permalink",
             description="Generate a GitHub permalink to a specific file and line range for citation.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "repo": {
@@ -90,7 +90,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_wiki",
             description="Search the GIRAF wiki documentation. Fetches pages live from GitHub and performs keyword search. Returns matching pages with URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -109,7 +109,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_wiki_pages",
             description="List all pages in the GIRAF wiki. Returns page titles and URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],

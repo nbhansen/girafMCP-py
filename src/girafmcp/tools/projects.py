@@ -17,7 +17,7 @@ def list_tools() -> list[Tool]:
             name="list_github_projects",
             description="List all GitHub Projects V2 in the aau-giraf organization. "
             "Returns project titles, numbers, item counts, and URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "limit": {
@@ -33,7 +33,7 @@ def list_tools() -> list[Tool]:
             name="get_github_project",
             description="Get details about a specific GitHub Project V2 by its number. "
             "The number is visible in the project URL.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "project_number": {
@@ -48,7 +48,7 @@ def list_tools() -> list[Tool]:
             name="list_project_items",
             description="List items (issues, PRs, draft issues) in a GitHub Project V2. "
             "Returns item titles, types, status, assignees, and labels.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "project_number": {
@@ -72,7 +72,7 @@ def list_tools() -> list[Tool]:
             name="check_github_projects_access",
             description="Check if the configured GitHub token has the 'read:project' scope "
             "required for accessing GitHub Projects V2.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],

@@ -15,7 +15,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_documentation",
             description="Semantic search across GIRAF wiki and documentation. Returns relevant sections with URLs.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -34,7 +34,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_static_documents",
             description="Semantic search over PDFs, research papers, and static documents. Returns content with page-level citations.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -58,7 +58,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_static_documents",
             description="List all ingested static documents (PDFs, research papers) with their tags.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],

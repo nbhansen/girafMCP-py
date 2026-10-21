@@ -27,7 +27,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="set_session_metadata",
             description="Set research metadata for this session (team, role, discipline). Called once at session start for logging purposes.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "team_id": {
@@ -51,7 +51,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="request_more_detail",
             description="Request more detailed guidance on the previous query. Advances through hint -> guidance -> example -> solution tiers.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -60,7 +60,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="configure_guardrails",
             description="Configure guardrail settings for a team. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "team_id": {
@@ -83,7 +83,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_guardrails_status",
             description="Get current guardrails status for the session.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -92,7 +92,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_feature_status",
             description="Get status of all research features (enabled/disabled).",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -102,7 +102,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="export_query_logs",
             description="Export query logs to CSV for research analysis. Supervisor only.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "output_path": {

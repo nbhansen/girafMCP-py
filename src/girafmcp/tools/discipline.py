@@ -20,7 +20,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="explain_for_discipline",
             description="Re-explain a concept or response for a different disciplinary background (CS, Interaction Design, Business, Health).",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "target_discipline": {
@@ -39,7 +39,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="compare_perspectives",
             description="Show how different disciplines would approach or understand a topic or design decision.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "topic": {
@@ -53,7 +53,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="translate_term",
             description="Translate a technical term for a specific discipline or all disciplines.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "term": {
@@ -72,7 +72,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_discipline_profile",
             description="Get detailed information about a discipline profile including vocabulary emphasis and explanation style.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "discipline": {
@@ -87,7 +87,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_disciplines",
             description="List all available discipline profiles with summaries.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],

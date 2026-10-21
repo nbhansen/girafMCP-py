@@ -15,7 +15,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_semester_context",
             description="Get the current semester context from local YAML configuration, including semester focus, priorities, known issues, and recent decisions. This reads local project configuration, not GitHub Projects.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -24,7 +24,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_personas",
             description="List available user personas. Personas help tailor responses to different user backgrounds (CS student, pedagogy student, supervisor, etc.)",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
@@ -33,7 +33,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="get_persona",
             description="Get details about a specific persona including communication style and focus areas.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "persona_id": {
@@ -47,7 +47,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="search_domain_knowledge",
             description="Search domain knowledge about autism, visual schedules, sensory considerations, and other background information relevant to GIRAF users.",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -66,7 +66,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="list_domain_topics",
             description="List all available domain knowledge topics (autism basics, visual schedules, sensory considerations, etc.)",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {},
                 "required": [],
