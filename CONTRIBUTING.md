@@ -107,7 +107,7 @@ personas:
 
 ### 4. Adding Static Documents (PDFs)
 
-Static documents like research papers and handover reports are ingested for semantic search.
+Static documents like research papers and handover reports are converted to Markdown (`giraf-mcp --extract`) and searched by keyword.
 
 **Location:** Set via `GIRAF_DOCUMENTS_DIR` environment variable
 
@@ -250,10 +250,10 @@ We use `ruff` for linting and formatting:
 
 ```bash
 # Check for issues
-ruff check src/
+ruff check src/ tests/
 
 # Auto-fix issues
-ruff check --fix src/
+ruff check --fix src/ tests/
 
 # Format code
 ruff format src/
@@ -278,7 +278,7 @@ def list_tools() -> list[Tool]:
         Tool(
             name="my_new_tool",
             description="What this tool does",
-            inputSchema={
+            input_schema={
                 "type": "object",
                 "properties": {
                     "param1": {"type": "string", "description": "..."},
@@ -297,16 +297,13 @@ async def handle_my_new_tool(adapter: MyAdapter, param1: str) -> list[TextConten
     return [TextContent(type="text", text="Result")]
 ```
 
-4. **Wire it up in `server.py`**:
-   - Update `call_tool()` in `src/girafmcp/server.py` to dispatch the new tool.
-   - Use `container.your_adapter` to pass dependencies to the handler.
+4. **Register the handler in `server.py`**: add an entry to `TOOL_HANDLERS` in `src/girafmcp/server.py`, using `container.your_adapter` to pass dependencies. A test fails if a listed tool has no handler.
 
 ```python
-    elif name == "my_new_tool":
-        return await my_module.handle_my_new_tool(
-            adapter=container.my_adapter,
-            param1=arguments["param1"],
-        )
+    "my_new_tool": lambda a: my_module.handle_my_new_tool(
+        adapter=container.my_adapter,
+        param1=a["param1"],
+    ),
 ```
 
 5. **Update DependencyContainer** (if needed): If your tool needs a new adapter or service, add it as a property to `src/girafmcp/core/container.py`.
@@ -353,9 +350,9 @@ The project follows a **Hexagonal Architecture** with a central **Dependency Inj
 ┌──────────────▼──────────────────┐
 │   Adapters (adapters/*.py)      │  External integrations (Impl)
 │   - GitHubAdapter               │
-│   - ChromaAdapter               │
+│   - GitHubProjectsAdapter       │
+│   - KeywordSearchAdapter        │
 │   - FileAdapter                 │
-│   - PDFAdapter                  │
 │   - ResearchDataAdapter         │
 └─────────────────────────────────┘
 ```
@@ -365,7 +362,7 @@ The project follows a **Hexagonal Architecture** with a central **Dependency Inj
 1. Create a feature branch: `git checkout -b feature/my-feature`
 2. Make your changes
 3. Ensure tests pass: `pytest`
-4. Ensure linting passes: `ruff check src/`
+4. Ensure linting and types pass: `ruff check src/ tests/` and `mypy src/`
 5. Commit with descriptive message
 6. Push and create a pull request
 
