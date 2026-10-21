@@ -25,7 +25,8 @@ from mcp.types import (
 )
 
 from girafmcp.core.container import DependencyContainer
-from girafmcp.core.session import get_current_session
+from girafmcp.core.session import SessionState, get_current_session, set_current_session
+from girafmcp.middleware import create_context
 from girafmcp.tools import (
     context,
     discipline,
@@ -270,18 +271,25 @@ TOOL_HANDLERS: dict[str, ToolHandler] = {
 }
 
 
-async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-    """Handle tool calls."""
+async def _run_handler(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """Run a tool's handler directly, without middleware."""
     handler = TOOL_HANDLERS.get(name)
     if handler is None:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
     return await handler(arguments)
 
 
+async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """Handle tool calls through the research middleware chain."""
+    ctx = create_context(name, arguments)
+    return await container.middleware_chain.execute(ctx, _run_handler)
+
+
 async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Dispatch a tool call to its handler.
 
-    This is used by request_more_detail to re-run the previous query.
+    This is used by request_more_detail to re-run the previous query; it goes
+    through the middleware so guardrails apply the newly advanced tier.
     """
     return await call_tool(name, arguments)
 
@@ -290,14 +298,25 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> list[TextConte
 
 
 async def _on_list_tools(
-    ctx: ServerRequestContext[Any], params: PaginatedRequestParams | None
+    ctx: ServerRequestContext[SessionState], params: PaginatedRequestParams | None
 ) -> ListToolsResult:
     return ListToolsResult(tools=await list_tools())
 
 
+@asynccontextmanager
+async def _connection_session(_: Server[SessionState]) -> AsyncIterator[SessionState]:
+    """Research session state for one client connection.
+
+    The server enters its lifespan once per connection; each request runs in its
+    own context, so the session is carried here rather than in a contextvar.
+    """
+    yield SessionState()
+
+
 async def _on_call_tool(
-    ctx: ServerRequestContext[Any], params: CallToolRequestParams
+    ctx: ServerRequestContext[SessionState], params: CallToolRequestParams
 ) -> CallToolResult:
+    set_current_session(ctx.lifespan_context)
     try:
         content: list[ContentBlock] = [*await call_tool(params.name, params.arguments or {})]
     except Exception as e:
@@ -307,7 +326,12 @@ async def _on_call_tool(
     return CallToolResult(content=content)
 
 
-server = Server("giraf-mcp", on_list_tools=_on_list_tools, on_call_tool=_on_call_tool)
+server: Server[SessionState] = Server(
+    "giraf-mcp",
+    lifespan=_connection_session,
+    on_list_tools=_on_list_tools,
+    on_call_tool=_on_call_tool,
+)
 
 
 # === Entry Point ===
@@ -315,12 +339,15 @@ server = Server("giraf-mcp", on_list_tools=_on_list_tools, on_call_tool=_on_call
 
 async def run_stdio_server() -> None:
     """Run the MCP server with stdio transport (for Claude Desktop)."""
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
-        )
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    finally:
+        await container.aclose()
 
 
 async def run_extraction() -> None:
@@ -431,6 +458,7 @@ def run_http_server(host: str = "127.0.0.1", port: int = 8000) -> None:
         yield
         # Shutdown
         logger.info("Shutting down GIRAF MCP server")
+        await container.aclose()
 
     # Create Starlette app
     app = Starlette(

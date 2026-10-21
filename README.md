@@ -59,10 +59,11 @@ GITHUB_TOKEN=ghp_...
 # Optional: Directory containing extracted markdown documents
 # GIRAF_EXTRACTED_DIR=data/extracted
 
-# Research features (all disabled by default)
-GIRAF_GUARDRAILS_ENABLED=false
-GIRAF_RESILIENCE_ENABLED=false
-GIRAF_DISCIPLINE_ENABLED=false
+# Research features (every tool call runs through these; values shown are the defaults)
+GIRAF_QUERY_LOGGING_ENABLED=true   # log tool calls to data/knowledge.db
+GIRAF_GUARDRAILS_ENABLED=true      # scaffolded, tiered answers (modes in data/guardrails.yaml)
+GIRAF_DISCIPLINE_ENABLED=true      # adapt wording to the session's discipline
+GIRAF_RESILIENCE_ENABLED=false     # error injection, for assessment periods only
 ```
 
 ### Run the Server

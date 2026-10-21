@@ -471,3 +471,11 @@ class TestGuardrailsDisabled:
             cooldown_until=None,
         )
         assert decision.action == "allow"
+
+
+def test_empty_team_overrides_section_does_not_break_team_lookup(tmp_path):
+    """A `team_overrides:` key with only comments parses as None."""
+    config_path = tmp_path / "guardrails.yaml"
+    config_path.write_text("enabled: true\nmode: tiered\nteam_overrides:\n  # none yet\n")
+    config = GuardrailsConfig(config_path)
+    assert config.get_team_mode("team_a") == GuardrailMode.TIERED

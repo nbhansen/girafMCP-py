@@ -114,7 +114,7 @@ class MultiFrameConfig:
 
     def _parse_profiles(self) -> None:
         """Parse discipline profiles from config."""
-        disciplines = self._config.get("disciplines", {})
+        disciplines = self._config.get("disciplines") or {}
         for key, data in disciplines.items():
             try:
                 discipline = Discipline(key)
@@ -130,7 +130,7 @@ class MultiFrameConfig:
                     explanation_style=style,
                     default_code_depth=depth,
                     assumed_knowledge=data.get("assumed_knowledge", []),
-                    translation_hints=data.get("translation_hints", {}),
+                    translation_hints=data.get("translation_hints") or {},
                 )
                 self._profiles[key] = profile
             except (ValueError, KeyError) as e:
@@ -138,7 +138,7 @@ class MultiFrameConfig:
 
     def _parse_translations(self) -> None:
         """Parse concept translations from config."""
-        translations = self._config.get("concept_translations", {})
+        translations = self._config.get("concept_translations") or {}
         for concept, trans in translations.items():
             self._translations[concept.lower()] = ConceptTranslation(
                 concept=concept,

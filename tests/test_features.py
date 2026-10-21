@@ -150,7 +150,7 @@ class TestConvenienceFunctions:
         """is_discipline_framing_enabled should check DISCIPLINE_FRAMING."""
         assert is_discipline_framing_enabled() is True  # Default
 
-        os.environ["GIRAF_DISCIPLINE_FRAMING_ENABLED"] = "false"
+        os.environ["GIRAF_DISCIPLINE_ENABLED"] = "false"
         assert is_discipline_framing_enabled() is False
 
     def test_is_knowledge_capture_enabled(self) -> None:

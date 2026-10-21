@@ -102,7 +102,7 @@ class ResilienceConfig:
             try:
                 with open(config_path) as f:
                     self._config = yaml.safe_load(f) or {}
-                self._team_overrides = dict(self._config.get("team_assignments", {}))
+                self._team_overrides = dict(self._config.get("team_assignments") or {})
                 logger.info(f"Loaded resilience config from {config_path}")
             except (OSError, yaml.YAMLError, TypeError, ValueError) as e:
                 logger.warning(f"Failed to load resilience config: {e}")

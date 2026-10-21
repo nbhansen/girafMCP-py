@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 from mcp.types import TextContent
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
+from girafmcp.core.features import Feature, FeatureRegistry
 from girafmcp.core.services.query_classifier import (
     classify_query_type,
     detect_meta_skills,
@@ -64,14 +65,19 @@ class LoggingMiddleware(Middleware):
             adapter: ResearchDataAdapter for storing logs
         """
         self.adapter = adapter
+        # The event loop only weakly references tasks; hold them until done
+        self._pending: set[asyncio.Task[None]] = set()
 
     @property
     def name(self) -> str:
         return "LoggingMiddleware"
 
     def should_process(self, ctx: ToolContext) -> bool:
-        """Skip logging for excluded tools."""
-        return ctx.name not in self.EXCLUDED_TOOLS
+        """Log unless query logging is disabled or the tool is excluded."""
+        return (
+            FeatureRegistry.is_enabled(Feature.QUERY_LOGGING)
+            and ctx.name not in self.EXCLUDED_TOOLS
+        )
 
     async def process(
         self,
@@ -103,9 +109,16 @@ class LoggingMiddleware(Middleware):
         finally:
             # Log asynchronously (fire-and-forget)
             duration_ms = int((time.monotonic() - start_time) * 1000)
-            asyncio.create_task(
+            task = asyncio.create_task(
                 self._log_query(ctx, result, duration_ms, error_msg)
             )
+            self._pending.add(task)
+            task.add_done_callback(self._pending.discard)
+
+    async def drain(self) -> None:
+        """Wait for all in-flight log writes to finish."""
+        if self._pending:
+            await asyncio.gather(*self._pending)
 
     async def _log_query(
         self,

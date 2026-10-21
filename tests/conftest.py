@@ -15,6 +15,7 @@ from girafmcp.core.container import DependencyContainer
 from girafmcp.core.services.guardrails_service import GuardrailsService
 from girafmcp.core.services.multiframe_service import MultiFrameService
 from girafmcp.core.services.resilience_service import ResilienceService
+from girafmcp.middleware import MiddlewareChain
 
 # Load environment variables from .env file
 _project_root = Path(__file__).parent.parent
@@ -66,6 +67,7 @@ def mock_container(
     container.guardrails_service = MagicMock(spec=GuardrailsService)
     container.resilience_service = MagicMock(spec=ResilienceService)
     container.multiframe_service = MagicMock(spec=MultiFrameService)
+    container.middleware_chain = MiddlewareChain()
 
     yield container
 

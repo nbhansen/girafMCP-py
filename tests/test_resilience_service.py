@@ -427,3 +427,12 @@ class TestErrorInjectionTypes:
         if error:
             assert error.error_type == ErrorType.WRONG_VARIABLE
             assert "results" in modified or "datum" in modified
+
+
+def test_empty_team_assignments_section_still_loads_config(tmp_path):
+    """A `team_assignments:` key with only comments parses as None."""
+    from girafmcp.core.services.resilience_service import ResilienceConfig
+
+    config_path = tmp_path / "resilience_tests.yaml"
+    config_path.write_text("enabled: true\nteam_assignments:\n  # none yet\n")
+    assert ResilienceConfig(config_path).enabled is True
