@@ -1,7 +1,9 @@
 """Search-related tool handlers using keyword search over extracted documents."""
 
 import logging
+
 from mcp.types import TextContent, Tool
+
 from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 
 logger = logging.getLogger(__name__)
@@ -90,7 +92,7 @@ async def handle_search_documentation(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching documentation for '{query}'", exc_info=True)
+        logger.exception(f"Error searching documentation for '{query}'")
         return [TextContent(type="text", text=f"Error searching documentation: {e}")]
 
 
@@ -120,7 +122,7 @@ async def handle_search_static_documents(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching static documents for '{query}'", exc_info=True)
+        logger.exception(f"Error searching static documents for '{query}'")
         return [TextContent(type="text", text=f"Error searching static documents: {e}")]
 
 
@@ -145,5 +147,5 @@ async def handle_list_static_documents(adapter: KeywordSearchAdapter) -> list[Te
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error listing static documents", exc_info=True)
+        logger.exception("Error listing static documents")
         return [TextContent(type="text", text=f"Error listing static documents: {e}")]

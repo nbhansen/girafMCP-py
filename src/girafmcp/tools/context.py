@@ -1,7 +1,9 @@
 """Context, domain knowledge, and persona tool handlers."""
 
 import logging
+
 from mcp.types import TextContent, Tool
+
 from girafmcp.adapters import FileAdapter
 
 logger = logging.getLogger(__name__)
@@ -93,7 +95,7 @@ async def handle_get_semester_context(adapter: FileAdapter) -> list[TextContent]
     except FileNotFoundError:
         return [TextContent(type="text", text="Project context file not found. Please create data/context.yaml")]
     except Exception as e:
-        logger.error("Error reading project context", exc_info=True)
+        logger.exception("Error reading project context")
         return [TextContent(type="text", text=f"Error reading project context: {e}")]
 
 
@@ -117,7 +119,7 @@ async def handle_list_personas(adapter: FileAdapter) -> list[TextContent]:
     except FileNotFoundError:
         return [TextContent(type="text", text="Personas file not found. Please create data/personas.yaml")]
     except Exception as e:
-        logger.error("Error reading personas", exc_info=True)
+        logger.exception("Error reading personas")
         return [TextContent(type="text", text=f"Error reading personas: {e}")]
 
 
@@ -144,7 +146,7 @@ async def handle_get_persona(adapter: FileAdapter, persona_id: str) -> list[Text
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error getting persona {persona_id}", exc_info=True)
+        logger.exception(f"Error getting persona {persona_id}")
         return [TextContent(type="text", text=f"Error getting persona: {e}")]
 
 
@@ -173,7 +175,7 @@ async def handle_search_domain_knowledge(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error(f"Error searching domain knowledge for '{query}'", exc_info=True)
+        logger.exception(f"Error searching domain knowledge for '{query}'")
         return [TextContent(type="text", text=f"Error searching domain knowledge: {e}")]
 
 
@@ -190,5 +192,5 @@ async def handle_list_domain_topics(adapter: FileAdapter) -> list[TextContent]:
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error listing domain topics", exc_info=True)
+        logger.exception("Error listing domain topics")
         return [TextContent(type="text", text=f"Error listing domain topics: {e}")]

@@ -1,16 +1,17 @@
 """Tests for feature toggle registry."""
 
 import os
+
 import pytest
 
 from girafmcp.core.features import (
     Feature,
     FeatureRegistry,
-    is_logging_enabled,
-    is_guardrails_enabled,
-    is_resilience_enabled,
     is_discipline_framing_enabled,
+    is_guardrails_enabled,
     is_knowledge_capture_enabled,
+    is_logging_enabled,
+    is_resilience_enabled,
 )
 
 

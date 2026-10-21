@@ -1,6 +1,6 @@
 """Tests for guardrails service."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -8,15 +8,15 @@ import pytest
 import yaml
 
 from girafmcp.core.services.guardrails_service import (
-    GuardrailsService,
-    GuardrailsConfig,
     GuardrailMode,
+    GuardrailsConfig,
+    GuardrailsService,
 )
 
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TestGuardrailsConfig:

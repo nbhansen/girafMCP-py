@@ -10,8 +10,8 @@ from mcp.types import TextContent
 
 from girafmcp.core.features import is_guardrails_enabled
 from girafmcp.core.services.guardrails_service import (
-    GuardrailsService,
     GuardrailsConfig,
+    GuardrailsService,
 )
 from girafmcp.middleware.base import Middleware, NextMiddleware, ToolContext
 

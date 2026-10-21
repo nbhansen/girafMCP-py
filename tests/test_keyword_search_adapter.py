@@ -1,7 +1,9 @@
 """Tests for KeywordSearchAdapter."""
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from girafmcp.adapters.keyword_search_adapter import KeywordSearchAdapter
 
 

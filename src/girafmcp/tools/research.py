@@ -4,16 +4,17 @@ Tools for session management, guardrails, and research data export.
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter
 from girafmcp.core.paths import DATA_DIR
 from girafmcp.core.services.guardrails_service import (
-    GuardrailsService,
     GuardrailMode,
+    GuardrailsService,
 )
 from girafmcp.core.session import SessionState
 
@@ -219,7 +220,7 @@ async def handle_request_more_detail(
         return result
 
     except Exception as e:
-        logger.error(f"Error re-running previous query: {e}", exc_info=True)
+        logger.exception("Error re-running previous query")
         return [
             TextContent(
                 type="text",
@@ -405,7 +406,7 @@ async def handle_export_query_logs(
         ]
 
     except Exception as e:
-        logger.error(f"Error exporting query logs: {e}", exc_info=True)
+        logger.exception("Error exporting query logs")
         return [
             TextContent(
                 type="text",

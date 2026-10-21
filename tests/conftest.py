@@ -1,8 +1,8 @@
 """Pytest configuration and fixtures."""
 
+from collections.abc import Generator
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest

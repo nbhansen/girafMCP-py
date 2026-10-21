@@ -4,8 +4,8 @@
 from girafmcp.core.session import (
     SessionState,
     get_current_session,
-    set_current_session,
     reset_session,
+    set_current_session,
 )
 
 

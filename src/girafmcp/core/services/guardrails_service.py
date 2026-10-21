@@ -6,7 +6,7 @@ Supports multiple modes: off, prompt, tiered, and cooldown.
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, cast
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class GuardrailMode(Enum):
@@ -80,7 +80,7 @@ class GuardrailsConfig:
                 with open(self._config_path) as f:
                     self._config = yaml.safe_load(f) or {}
                 logger.info(f"Loaded guardrails config from {self._config_path}")
-            except Exception as e:
+            except (OSError, yaml.YAMLError) as e:
                 logger.warning(f"Failed to load guardrails config: {e}")
                 self._config = {}
         else:

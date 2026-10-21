@@ -9,7 +9,6 @@ from typing import Any, Literal, cast
 
 from girafmcp.core.types import MetaSkillIndicators, QueryType
 
-
 # Pattern definitions for query type classification
 QUERY_TYPE_PATTERNS: dict[QueryType, list[str]] = {
     QueryType.EXPLANATION: [

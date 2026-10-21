@@ -2,7 +2,7 @@
 
 import pytest
 
-from girafmcp.server import list_tools, call_tool
+from girafmcp.server import call_tool, list_tools
 
 
 class TestServerWiring:

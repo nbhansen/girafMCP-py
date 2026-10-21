@@ -1,11 +1,11 @@
 """Tests for LoggingMiddleware."""
 
 import asyncio
-import pytest
-from pathlib import Path
-import tempfile
 import os
+import tempfile
+from pathlib import Path
 
+import pytest
 from mcp.types import TextContent
 
 from girafmcp.adapters.research_data_adapter import ResearchDataAdapter

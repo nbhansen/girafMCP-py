@@ -4,9 +4,10 @@ Provides environment-variable-driven feature toggles that control
 which research features are enabled at runtime.
 """
 
+import os
 from dataclasses import dataclass
 from enum import Enum
-import os
+from typing import ClassVar
 
 
 class Feature(Enum):
@@ -41,7 +42,7 @@ class FeatureRegistry:
     """
 
     # Default values for each feature
-    DEFAULTS: dict[Feature, bool] = {
+    DEFAULTS: ClassVar[dict[Feature, bool]] = {
         Feature.QUERY_LOGGING: True,
         Feature.GUARDRAILS: True,
         Feature.RESILIENCE: False,  # Off by default - enable during assessment

@@ -1,6 +1,7 @@
 """GitHub Projects V2 tool handlers."""
 
 import logging
+
 from mcp.types import TextContent, Tool
 
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
@@ -117,7 +118,7 @@ async def handle_list_github_projects(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error("Error listing GitHub projects", exc_info=True)
+        logger.exception("Error listing GitHub projects")
         return [TextContent(type="text", text=f"Error listing projects: {e}")]
 
 
@@ -164,7 +165,7 @@ async def handle_get_github_project(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error(f"Error getting project #{project_number}", exc_info=True)
+        logger.exception(f"Error getting project #{project_number}")
         return [TextContent(type="text", text=f"Error getting project: {e}")]
 
 
@@ -239,7 +240,7 @@ async def handle_list_project_items(
     except ValueError as e:
         return [TextContent(type="text", text=f"Error: {e}")]
     except Exception as e:
-        logger.error(f"Error listing items for project #{project_number}", exc_info=True)
+        logger.exception(f"Error listing items for project #{project_number}")
         return [TextContent(type="text", text=f"Error listing project items: {e}")]
 
 
@@ -283,5 +284,5 @@ async def handle_check_github_projects_access(
         return [TextContent(type="text", text="\n".join(lines))]
 
     except Exception as e:
-        logger.error("Error checking GitHub projects access", exc_info=True)
+        logger.exception("Error checking GitHub projects access")
         return [TextContent(type="text", text=f"Error checking access: {e}")]

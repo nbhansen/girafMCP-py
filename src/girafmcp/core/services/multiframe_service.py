@@ -102,7 +102,7 @@ class MultiFrameConfig:
             self._parse_profiles()
             self._parse_translations()
             logger.info(f"Loaded discipline profiles from {path}")
-        except Exception as e:
+        except (OSError, yaml.YAMLError, AttributeError, KeyError, TypeError, ValueError) as e:
             logger.warning(f"Failed to load discipline profiles: {e}")
             self._set_defaults()
 
@@ -331,7 +331,7 @@ class MultiFrameService:
             pattern = rf"\b{re.escape(term)}\b"
             if re.search(pattern, adapted, re.IGNORECASE):
                 # Add translation note after first occurrence
-                def add_note(match: re.Match[str]) -> str:
+                def add_note(match: re.Match[str], translation: str = translation) -> str:
                     return f"{match.group(0)} (*{translation}*)"
 
                 adapted = re.sub(
@@ -374,7 +374,7 @@ class MultiFrameService:
                 )
 
         # Default to CS frame or first available
-        default = frames.get("cs", list(frames.values())[0] if frames else "")
+        default = frames.get("cs", next(iter(frames.values())) if frames else "")
 
         return FramedExplanation(
             concept=concept,

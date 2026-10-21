@@ -9,8 +9,8 @@ import logging
 from mcp.types import TextContent, Tool
 
 from girafmcp.core.services.resilience_service import (
-    ResilienceService,
     ResilienceMode,
+    ResilienceService,
 )
 from girafmcp.core.session import SessionState
 

@@ -87,7 +87,7 @@ class MarkdownAdapter:
             
             return documents
 
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             logger.error(f"Error reading Markdown {md_path}: {e}")
             return []
 
@@ -100,8 +100,8 @@ class MarkdownAdapter:
                     frontmatter = yaml.safe_load(parts[1])
                     body = parts[2]
                     return frontmatter, body
-            except Exception:
-                pass
+            except yaml.YAMLError as e:
+                logger.warning(f"Invalid frontmatter, treating as plain markdown: {e}")
         
         return {}, content
 

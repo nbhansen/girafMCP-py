@@ -5,8 +5,9 @@ Tests are skipped if the scope is not available.
 """
 
 import os
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from girafmcp.adapters.github_projects_adapter import GitHubProjectsAdapter
 from girafmcp.core.types import Project

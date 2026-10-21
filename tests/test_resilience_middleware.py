@@ -6,14 +6,13 @@ from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
-
 from mcp.types import TextContent
 
-from girafmcp.core.session import SessionState
 from girafmcp.core.services.resilience_service import (
-    ResilienceService,
     ResilienceConfig,
+    ResilienceService,
 )
+from girafmcp.core.session import SessionState
 from girafmcp.middleware import ToolContext
 from girafmcp.middleware.resilience import ResilienceMiddleware
 

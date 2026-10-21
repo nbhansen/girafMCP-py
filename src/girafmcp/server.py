@@ -6,7 +6,8 @@ and domain knowledge to help students working on the GIRAF project.
 
 import asyncio
 import os
-from typing import Any, AsyncGenerator, cast
+from collections.abc import AsyncGenerator
+from typing import Any, cast
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -14,7 +15,16 @@ from mcp.types import TextContent, Tool
 
 from girafmcp.core.container import DependencyContainer
 from girafmcp.core.session import get_current_session
-from girafmcp.tools import context, discipline, github, knowledge, projects, research, resilience, search
+from girafmcp.tools import (
+    context,
+    discipline,
+    github,
+    knowledge,
+    projects,
+    research,
+    resilience,
+    search,
+)
 
 # Create server instance
 server = Server("giraf-mcp")
@@ -395,12 +405,13 @@ def run_http_server(host: str = "0.0.0.0", port: int = 8000) -> None:
         host: Host to bind to. Use "0.0.0.0" for all interfaces.
         port: Port to listen on.
     """
+    import logging
+
+    import uvicorn
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
-    from starlette.routing import Route
     from starlette.responses import JSONResponse
-    import uvicorn
-    import logging
+    from starlette.routing import Route
 
     logger = logging.getLogger(__name__)
 

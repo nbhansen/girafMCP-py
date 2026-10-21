@@ -6,14 +6,13 @@ from tempfile import TemporaryDirectory
 
 import pytest
 import yaml
-
 from mcp.types import TextContent
 
-from girafmcp.core.session import SessionState
 from girafmcp.core.services.multiframe_service import (
-    MultiFrameService,
     MultiFrameConfig,
+    MultiFrameService,
 )
+from girafmcp.core.session import SessionState
 from girafmcp.middleware import ToolContext
 from girafmcp.middleware.discipline import DisciplineMiddleware
 

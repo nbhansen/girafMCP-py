@@ -4,9 +4,10 @@ Handles query logs, knowledge capture, and resilience tracking.
 Uses aiosqlite for async database operations.
 """
 
+import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -126,7 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_hp_semester ON handover_packages(semester);
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ResearchDataAdapter:
@@ -226,8 +227,8 @@ class ResearchDataAdapter:
                 )
                 await db.commit()
 
-        except Exception as e:
-            logger.error(f"Failed to log query: {e}", exc_info=True)
+        except Exception:
+            logger.exception("Failed to log query")
 
     async def get_session_queries(self, session_id: str) -> list[QueryLog]:
         """Retrieve all queries for a session.
@@ -408,24 +409,27 @@ class ResearchDataAdapter:
             cursor = await db.execute(query, params)
             rows = list(await cursor.fetchall())
 
-            # Write CSV
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
-                # Header
-                f.write(
-                    "id,timestamp,session_id,team_id,role,discipline,"
-                    "tool_name,query_type,duration_ms,result_count,error\n"
-                )
-                # Data
-                for row in rows:
-                    # Escape/quote fields that might contain commas
-                    formatted = [
-                        f'"{str(v)}"' if v and "," in str(v) else str(v or "")
-                        for v in row
-                    ]
-                    f.write(",".join(formatted) + "\n")
+        await asyncio.to_thread(self._write_csv, output_path, rows)
+        return len(rows)
 
-            return len(rows)
+    @staticmethod
+    def _write_csv(output_path: Path, rows: list[aiosqlite.Row]) -> None:
+        """Write exported query-log rows to a CSV file."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            # Header
+            f.write(
+                "id,timestamp,session_id,team_id,role,discipline,"
+                "tool_name,query_type,duration_ms,result_count,error\n"
+            )
+            # Data
+            for row in rows:
+                # Escape/quote fields that might contain commas
+                formatted = [
+                    f'"{v!s}"' if v and "," in str(v) else str(v or "")
+                    for v in row
+                ]
+                f.write(",".join(formatted) + "\n")
 
     def _row_to_query_log(self, row: aiosqlite.Row) -> QueryLog:
         """Convert a database row to a QueryLog object."""

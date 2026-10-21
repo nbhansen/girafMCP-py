@@ -10,7 +10,7 @@ import os
 from mcp.types import TextContent
 
 from girafmcp.core.services.multiframe_service import MultiFrameService
-from girafmcp.middleware import Middleware, ToolContext, NextMiddleware
+from girafmcp.middleware import Middleware, NextMiddleware, ToolContext
 
 logger = logging.getLogger(__name__)
 
